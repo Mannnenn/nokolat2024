@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="nokolat2024" exec="imu2tf" name="imu_to_tf_node" output="screen"/>
+  <node pkg="nokolat2024" exec="tofSmoother" name="tof_smoother_node" output="screen"/>
+</launch>

@@ -1,0 +1,16 @@
+<robot name="test_robot">
+  <link name="base_link"/> #基準となる空のリンク
+
+  <joint name="body_joint" type="fixed"> #ジョイントの設定
+    <parent link="base_link"/> #ジョイントの親を指定
+    <child  link="imu_link"/> #ジョイントの子を指定
+  </joint>
+  <link name="imu_link"> #リンクの設定
+    <visual>
+      <origin xyz="0.06 0 0" rpy="-1.54 3.14 0"/> <!-- Adjust origin and orientation as needed -->
+      <geometry>
+        <mesh filename="package://nokolat2024/urdf/v1.stl"scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+</robot>
