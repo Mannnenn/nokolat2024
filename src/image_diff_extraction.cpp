@@ -10,13 +10,25 @@ class ImageDifferenceNode : public rclcpp::Node
 public:
 ImageDifferenceNode() : Node("image_difference_node")
 {
-  subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
-    "/camera/camera/infra1/image_rect_raw", 10,
-    std::bind(&ImageDifferenceNode::topic_callback, this, std::placeholders::_1));
+    // パラメータの宣言
+    this->declare_parameter<std::string>("input_ir_image_topic_name", "/camera/camera/infra/image_rect_raw");
+    this->declare_parameter<std::string>("output_image_topic_name", "/camera/camera/infra/diff");
+
+    // パラメータの取得
+    std::string input_ir_image_topic_name;
+    this->get_parameter("input_ir_image_topic_name", input_ir_image_topic_name);
+    std::string output_image_topic_name;
+    this->get_parameter("output_image_topic_name", output_image_topic_name);
+
+    // サブスクライバーの初期化
+    subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
+      input_ir_image_topic_name, 10,
+      std::bind(&ImageDifferenceNode::topic_callback, this, std::placeholders::_1));
 
     // パブリッシャーの初期化
-    publisher_ = this->create_publisher<sensor_msgs::msg::Image>("/camera/camera/infra1/diff", 10);
+    publisher_ = this->create_publisher<sensor_msgs::msg::Image>(output_image_topic_name, 10);
   }
+
 
 private:
   void topic_callback(const sensor_msgs::msg::Image::SharedPtr msg)

@@ -9,13 +9,24 @@ class ImageProcessor : public rclcpp::Node
 public:
   ImageProcessor() : Node("image_processor")
   {
+    // パラメータの宣言
+    this->declare_parameter<std::string>("input_image_topic_name", "/camera/camera/infra/image_diff");
+    this->declare_parameter<std::string>("output_image_topic_name", "/camera/camera/infra/image_thresholded");
+
+    // パラメータの取得
+    std::string input_image_topic_name;
+    this->get_parameter("input_image_topic_name", input_image_topic_name);
+    std::string output_image_topic_name;
+    this->get_parameter("output_image_topic_name", output_image_topic_name);
+
+
 	// サブスクライバーの設定
 	subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
-	  "/camera/camera/infra1/image_rect_raw", 10,
+	  input_image_topic_name, 10,
 	  std::bind(&ImageProcessor::image_callback, this, std::placeholders::_1));
 
 	// パブリッシャーの設定
-	publisher_ = this->create_publisher<sensor_msgs::msg::Image>("/camera/camera/infra1/bivaluation", 10);
+	publisher_ = this->create_publisher<sensor_msgs::msg::Image>(output_image_topic_name, 10);
   }
 
 private:
@@ -33,15 +44,25 @@ private:
 	  return;
 	}
 
-	// OpenCVを使用してTHRESH_OTSUを適用
-	cv::Mat thresholded;
-	cv::threshold(cv_ptr->image, thresholded, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
+  // 低輝度の点をフィルタリング
+  cv::Mat& img = cv_ptr->image;
+  for (int y = 0; y < img.rows; y++)
+  {
+    for (int x = 0; x < img.cols; x++)
+    {
+      // 輝度値が50未満の場合、ピクセルを黒に設定
+      if (img.at<uchar>(y, x) < 30)
+      {
+        img.at<uchar>(y, x) = 0;
+      }
+    }
+  }
 
-	// 変換された画像をROSメッセージに変換
-	cv_bridge::CvImage out_msg;
-	out_msg.header = msg->header; // タイムスタンプとフレームIDをコピー
-	out_msg.encoding = sensor_msgs::image_encodings::MONO8; // エンコーディングを設定
-	out_msg.image = thresholded; // 画像データを設定
+  // 変換された画像をROSメッセージに変換してパブリッシュ
+  cv_bridge::CvImage out_msg;
+  out_msg.header = msg->header; // タイムスタンプとフレームIDをコピー
+  out_msg.encoding = sensor_msgs::image_encodings::MONO8; // エンコーディングを設定
+  out_msg.image = img; // 画像データを設定
 
 	// パブリッシュ
 	publisher_->publish(*out_msg.toImageMsg());

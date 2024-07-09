@@ -43,12 +43,16 @@ ament_target_dependencies(infra2bivaluation rclcpp sensor_msgs cv_bridge image_t
 add_executable(image_diff_extraction src/image_diff_extraction.cpp)
 ament_target_dependencies(image_diff_extraction rclcpp sensor_msgs cv_bridge OpenCV OpenMP)
 
+add_executable(stereo_maching src/stereo_maching.cpp)
+ament_target_dependencies(stereo_maching rclcpp image_transport sensor_msgs cv_bridge OpenCV)
+
 
 install(TARGETS
   imu2tf
   tofSmoother
   infra2bivaluation
   image_diff_extraction
+  stereo_maching
   DESTINATION lib/${PROJECT_NAME})
 
 
