@@ -1,21 +1,21 @@
 <launch>
-  <!--
+  
   <node pkg="nokolat2024" exec="image_diff_extraction" name="image_diff_extraction_1" output="screen">
-    <param name="input_ir_image_topic_name" value="/camera/camera/infra1/image_rect_raw"/>
+    <param name="input_ir_image_topic_name" value="/infra_cam/left/infra1/image_rect_raw"/>
     <param name="output_image_topic_name" value="/camera/camera/infra1/image_diff"/>
   </node>
   <node pkg="nokolat2024" exec="image_diff_extraction" name="image_diff_extraction_2" output="screen">
-    <param name="input_ir_image_topic_name" value="/camera/camera/infra2/image_rect_raw"/>
+    <param name="input_ir_image_topic_name" value="/infra_cam/right/infra2/image_rect_raw"/>
     <param name="output_image_topic_name" value="/camera/camera/infra2/image_diff"/>
   </node>
 
-  -->
+  
     <node pkg="nokolat2024" exec="infra2bivaluation" name="infra2bivaluation_1" output="screen">
-    <param name="input_image_topic_name" value="/camera/camera/infra1/image_rect_raw"/>
+    <param name="input_image_topic_name" value="/camera/camera/infra1/image_diff"/>
     <param name="output_image_topic_name" value="/camera/camera/infra1/image_diff_bivaluation"/>
     </node>
     <node pkg="nokolat2024" exec="infra2bivaluation" name="infra2bivaluation_2" output="screen">
-    <param name="input_image_topic_name" value="/camera/camera/infra2/image_rect_raw"/>
+    <param name="input_image_topic_name" value="/camera/camera/infra2/image_diff"/>
     <param name="output_image_topic_name" value="/camera/camera/infra2/image_diff_bivaluation"/>
     </node>
 

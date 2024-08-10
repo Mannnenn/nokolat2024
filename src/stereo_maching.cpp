@@ -52,10 +52,10 @@ private:
     if (!left_image_.empty() && !right_image_.empty())
     {
         // パラメータの調整
-        stereo_bm_->setBlockSize(25); // ブロックサイズを15に設定
+        stereo_bm_->setBlockSize(15); // ブロックサイズを15に設定
         stereo_bm_->setNumDisparities(64); // 視差の範囲を128に設定
-        stereo_bm_->setPreFilterType(cv::StereoBM::PREFILTER_XSOBEL); // プリフィルタのタイプを設定
-        stereo_bm_->setTextureThreshold(10); // テクスチャの閾値を10に設定
+        stereo_bm_->setPreFilterType(cv::StereoBM::PREFILTER_NORMALIZED_RESPONSE); // プリフィルタのタイプを設定
+        stereo_bm_->setTextureThreshold(1); // テクスチャの閾値を10に設定
 
       cv::Mat disparity;
       stereo_bm_->compute(left_image_, right_image_, disparity);
@@ -65,7 +65,7 @@ private:
     // Calculate depth map from disparity
     cv::Mat depth_map;
     float focal_length = 640.0f; // Set your camera's focal length in pixels
-    float baseline = 0.95f; // Set the distance between your cameras in meters
+    float baseline = 10.7f; // Set the distance between your cameras in meters
     //Cast disparity to float
     disparity.convertTo(disparity, CV_32F);
 
@@ -81,7 +81,7 @@ private:
 
     // Manually scale the depth values to 0-255 range
     float min_fix = 0.01f; // Minimum depth value you are interested in (meters)
-    float max_fix = 10.0f; // Maximum depth value you are interested in (meters)
+    float max_fix = 20.0f; // Maximum depth value you are interested in (meters)
     cv::Mat scaled_depth_map = (depth_map - min_fix) * (255.0 / (max_fix - min_fix));
     scaled_depth_map = cv::min(cv::max(scaled_depth_map, 0.0f), 255.0f); // Clipping to 0-255
 

@@ -51,7 +51,7 @@ private:
     for (int x = 0; x < img.cols; x++)
     {
       // 輝度値が50未満の場合、ピクセルを黒に設定
-      if (img.at<uchar>(y, x) < 30)
+      if (img.at<uchar>(y, x) < 20)
       {
         img.at<uchar>(y, x) = 0;
       }
