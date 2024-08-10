@@ -1,0 +1,27 @@
+<launch>
+
+
+    <node pkg="nokolat2024" exec="infra2bivaluation" name="infra2bivaluation_1" output="screen">
+    <param name="input_image_topic_name" value="/camera/camera/infra1/image_rect_raw"/>
+    <param name="output_image_topic_name" value="/camera/camera/infra1/image_diff_bivaluation"/>
+    </node>
+    <node pkg="nokolat2024" exec="infra2bivaluation" name="infra2bivaluation_2" output="screen">
+    <param name="input_image_topic_name" value="/camera/camera/infra2/image_rect_raw"/>
+    <param name="output_image_topic_name" value="/camera/camera/infra2/image_diff_bivaluation"/>
+    </node>
+
+
+  <node pkg="nokolat2024" exec="depth_estimation" name="depth_estimation" output="screen">
+    <param name="input_left_image_topic_name" value="/camera/camera/infra1/image_diff_bivaluation"/>
+    <param name="input_right_image_topic_name" value="/camera/camera/infra2/image_diff_bivaluation"/>
+    <param name="output_image_topic_name" value="/camera/camera/depth/image"/>
+    <param name="output_mean_depth_topic_name" value="/camera/camera/mean_depth"/>
+    </node>
+
+  <node pkg="nokolat2024" exec="position_estimation" name="position_estimation" output="screen">
+    <param name="input_image_topic_name" value="/camera/camera/depth/image"/>
+    <param name="input_depth" value="/camera/camera/mean_depth"/>
+    <param name="output_position_topic_name" value="/camera/camera/position"/>
+    </node>
+
+</launch>

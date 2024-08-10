@@ -17,6 +17,7 @@ find_package(imutof REQUIRED)
 
 find_package(cv_bridge REQUIRED)
 find_package(image_transport)
+find_package(geometry_msgs)
 find_package(OpenCV)
 
 find_package(OpenMP REQUIRED)
@@ -44,12 +45,19 @@ ament_target_dependencies(image_diff_extraction rclcpp sensor_msgs cv_bridge Ope
 add_executable(stereo_maching src/stereo_maching.cpp)
 ament_target_dependencies(stereo_maching rclcpp image_transport sensor_msgs cv_bridge OpenCV)
 
+add_executable(depth_estimation src/depth_estimation.cpp)
+ament_target_dependencies(depth_estimation rclcpp image_transport sensor_msgs cv_bridge OpenCV)
+
+add_executable(position_estimation src/position_estimation.cpp)
+ament_target_dependencies(position_estimation rclcpp image_transport sensor_msgs cv_bridge OpenCV geometry_msgs)
 
 install(TARGETS
   imu2tf
   infra2bivaluation
   image_diff_extraction
   stereo_maching
+  depth_estimation
+  position_estimation
   DESTINATION lib/${PROJECT_NAME})
 
 
