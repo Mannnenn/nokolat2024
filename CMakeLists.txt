@@ -19,6 +19,7 @@ find_package(cv_bridge REQUIRED)
 find_package(image_transport)
 find_package(geometry_msgs)
 find_package(OpenCV)
+find_package(nav_msgs)
 
 find_package(OpenMP REQUIRED)
 
@@ -51,6 +52,9 @@ ament_target_dependencies(depth_estimation rclcpp image_transport sensor_msgs cv
 add_executable(position_estimation src/position_estimation.cpp)
 ament_target_dependencies(position_estimation rclcpp image_transport sensor_msgs cv_bridge OpenCV geometry_msgs)
 
+add_executable(path_pub src/path_pub.cpp)
+ament_target_dependencies(path_pub rclcpp tf2_ros geometry_msgs nav_msgs)
+
 install(TARGETS
   imu2tf
   infra2bivaluation
@@ -58,6 +62,7 @@ install(TARGETS
   stereo_maching
   depth_estimation
   position_estimation
+  path_pub
   DESTINATION lib/${PROJECT_NAME})
 
 

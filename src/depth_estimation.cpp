@@ -89,7 +89,7 @@ private:
 
         // Manually scale the depth values to 0-255 range
         float min_fix = 0.01f; // Minimum depth value you are interested in (meters)
-        float max_fix = 2.0f; // Maximum depth value you are interested in (meters)
+        float max_fix = 20.0f; // Maximum depth value you are interested in (meters)
         cv::Mat scaled_depth_map = (depth_map - min_fix) * (255.0 / (max_fix - min_fix));
         scaled_depth_map = cv::min(cv::max(scaled_depth_map, 0.0f), 255.0f); // Clipping to 0-255
 

@@ -33,6 +33,8 @@
   <node pkg="nokolat2024" exec="imu2tf" name="imu_to_tf_node" output="screen"/>
   <node pkg="rviz2" exec="rviz2" name="rviz" args="-d $(find-pkg-share nokolat2024)/rviz/rvizmodel.rviz" output="screen"/>
 
+  <node pkg="nokolat2024" exec="path_pub" name="path_pub" output="screen"/>
+
   <node pkg="micro_ros_agent" exec="micro_ros_agent" name="micro_ros_agent" output="screen" args="udp4 --port 8888"/>
 
 </launch>
