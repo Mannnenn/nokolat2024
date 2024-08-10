@@ -1,14 +1,14 @@
 <launch>
 
 
-    <node pkg="nokolat2024" exec="infra2bivaluation" name="infra2bivaluation_1" output="screen">
+  <node pkg="nokolat2024" exec="infra2bivaluation" name="infra2bivaluation_1" output="screen">
     <param name="input_image_topic_name" value="/camera/camera/infra1/image_rect_raw"/>
     <param name="output_image_topic_name" value="/camera/camera/infra1/image_diff_bivaluation"/>
-    </node>
-    <node pkg="nokolat2024" exec="infra2bivaluation" name="infra2bivaluation_2" output="screen">
+  </node>
+  <node pkg="nokolat2024" exec="infra2bivaluation" name="infra2bivaluation_2" output="screen">
     <param name="input_image_topic_name" value="/camera/camera/infra2/image_rect_raw"/>
     <param name="output_image_topic_name" value="/camera/camera/infra2/image_diff_bivaluation"/>
-    </node>
+  </node>
 
 
   <node pkg="nokolat2024" exec="depth_estimation" name="depth_estimation" output="screen">
@@ -16,12 +16,23 @@
     <param name="input_right_image_topic_name" value="/camera/camera/infra2/image_diff_bivaluation"/>
     <param name="output_image_topic_name" value="/camera/camera/depth/image"/>
     <param name="output_mean_depth_topic_name" value="/camera/camera/mean_depth"/>
-    </node>
+  </node>
 
   <node pkg="nokolat2024" exec="position_estimation" name="position_estimation" output="screen">
     <param name="input_image_topic_name" value="/camera/camera/depth/image"/>
     <param name="input_depth" value="/camera/camera/mean_depth"/>
     <param name="output_position_topic_name" value="/camera/camera/position"/>
-    </node>
+  </node>
+
+  <node pkg="nokolat2024" exec="position_estimation" name="position_estimation" output="screen">
+    <param name="input_image_topic_name" value="/camera/camera/depth/image"/>
+    <param name="input_depth" value="/camera/camera/mean_depth"/>
+    <param name="output_position_topic_name" value="/camera/camera/position"/>
+  </node>
+
+  <node pkg="nokolat2024" exec="imu2tf" name="imu_to_tf_node" output="screen"/>
+  <node pkg="rviz2" exec="rviz2" name="rviz" args="-d $(find-pkg-share nokolat2024)/rviz/rvizmodel.rviz" output="screen"/>
+
+  <node pkg="micro_ros_agent" exec="micro_ros_agent" name="micro_ros_agent" output="screen" args="udp4 --port 8888"/>
 
 </launch>

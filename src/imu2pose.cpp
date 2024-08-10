@@ -1,8 +1,5 @@
 #include "rclcpp/rclcpp.hpp"
-#include "tf2_ros/transform_broadcaster.h"
-#include "geometry_msgs/msg/transform_stamped.hpp"
 #include "geometry_msgs/msg/pose.hpp"
-#include "geometry_msgs/msg/point.hpp"
 
 #include <cmath>
 
@@ -16,14 +13,12 @@ public:
         rclcpp::QoS qos(100); // 10 is the history depth
         qos.reliability(rclcpp::ReliabilityPolicy::BestEffort);
         imu_subscriber_ = this->create_subscription<geometry_msgs::msg::Pose>(
-            "imu_tof", qos, std::bind(&ImuToTfNode::pose_callback, this, std::placeholders::_1));
-        camera_subscriber_ = this->create_subscription<geometry_msgs::msg::Point>(
-            "/camera/camera/position", qos, std::bind(&ImuToTfNode::position_callback, this, std::placeholders::_1));
+            "imu_tof", qos, std::bind(&ImuToTfNode::data_callback, this, std::placeholders::_1));
         tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
     }
 
 private:
-    void pose_callback(const geometry_msgs::msg::Pose::SharedPtr msg)
+    void data_callback(const geometry_msgs::msg::Pose::SharedPtr msg)
     {
 
         geometry_msgs::msg::TransformStamped tf;
@@ -39,19 +34,12 @@ private:
         tf.header.stamp = this->now();
         tf.header.frame_id = "base_link";
         tf.child_frame_id = "imu_link";
-        tf.transform.translation.x = position_.x;
-        tf.transform.translation.y = position_.y;
+        tf.transform.translation.x = 0.0;
+        tf.transform.translation.y = 0.0;
         tf.transform.translation.z = low_pass_filter(vertical_distance);
         tf.transform.rotation = msg->orientation;
 
         tf_broadcaster_->sendTransform(tf);
-
-        //printf("x: %f, y: %f, z: %f\n", tf.transform.translation.x, tf.transform.translation.y, tf.transform.translation.z);
-    }
-
-    void position_callback(const geometry_msgs::msg::Point::SharedPtr msg)
-    {
-        position_ = *msg;
     }
 
 
@@ -90,10 +78,7 @@ private:
     float z_filtered_prev_;
 
     rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr imu_subscriber_;
-    rclcpp::Subscription<geometry_msgs::msg::Point>::SharedPtr camera_subscriber_;
     std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
-
-    geometry_msgs::msg::Point position_;
 };
 
 int main(int argc, char **argv)
