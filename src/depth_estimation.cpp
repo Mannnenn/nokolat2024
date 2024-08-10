@@ -83,6 +83,7 @@ private:
         //std::cout << "Mean depth: " << mean_depth[0] << std::endl;
 
         std_msgs::msg::Float32 mean_depth_msg;
+
         mean_depth_msg.data = static_cast<float>(mean_depth[0]);
         mean_depth_pub_->publish(mean_depth_msg);
 
@@ -106,6 +107,16 @@ private:
         rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr mean_depth_pub_;
         cv::Mat left_image_, right_image_;
         cv::Ptr<cv::StereoBM> stereo_bm_;
+
+    float low_pass_filter(float depth_current)
+    {
+        float alpha = 0.1; // 適切な値に調整する
+        float depth_filtered = depth_filtered_prev_ * (1 - alpha) + depth_current * alpha;
+        depth_filtered_prev_ = depth_filtered; // 更新された値を保存
+        return depth_filtered;
+    }
+
+    float depth_filtered_prev_;
 };
 
 int main(int argc, char *argv[]) {
