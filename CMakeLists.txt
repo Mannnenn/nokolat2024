@@ -34,8 +34,6 @@ find_package(rosidl_default_generators REQUIRED)
 add_executable(imu2tf src/imu2tf.cpp)
 ament_target_dependencies(imu2tf rclcpp tf2_ros sensor_msgs geometry_msgs std_msgs)
 
-add_executable(tofSmoother src/smooth_altitude.cpp)
-ament_target_dependencies(tofSmoother rclcpp  sensor_msgs geometry_msgs std_msgs)
 
 add_executable(infra2bivaluation src/infra2bivaluation.cpp)
 ament_target_dependencies(infra2bivaluation rclcpp sensor_msgs cv_bridge image_transport OpenCV)
@@ -49,7 +47,6 @@ ament_target_dependencies(stereo_maching rclcpp image_transport sensor_msgs cv_b
 
 install(TARGETS
   imu2tf
-  tofSmoother
   infra2bivaluation
   image_diff_extraction
   stereo_maching

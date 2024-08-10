@@ -1,8 +1,7 @@
 #include "rclcpp/rclcpp.hpp"
-#include "sensor_msgs/msg/imu.hpp"
-#include "std_msgs/msg/float32.hpp"
 #include "tf2_ros/transform_broadcaster.h"
 #include "geometry_msgs/msg/transform_stamped.hpp"
+#include "geometry_msgs/msg/pose.hpp"
 
 #include <cmath>
 
@@ -15,22 +14,22 @@ public:
     {
         rclcpp::QoS qos(100); // 10 is the history depth
         qos.reliability(rclcpp::ReliabilityPolicy::BestEffort);
-        imu_subscriber_ = this->create_subscription<sensor_msgs::msg::Imu>(
-            "imu_tof", qos, std::bind(&ImuToTfNode::imu_callback, this, std::placeholders::_1));
-        altitude_subscriber_ = this->create_subscription<std_msgs::msg::Float32>(
-            "altitude", qos, std::bind(&ImuToTfNode::altitude_callback, this, std::placeholders::_1));
+        imu_subscriber_ = this->create_subscription<geometry_msgs::msg::Pose>(
+            "imu_tof", qos, std::bind(&ImuToTfNode::data_callback, this, std::placeholders::_1));
         tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
     }
 
 private:
-    void imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
+    void data_callback(const geometry_msgs::msg::Pose::SharedPtr msg)
     {
 
         geometry_msgs::msg::TransformStamped tf;
 
         double roll, pitch;
+        double raw_z = msg->position.z;
+
         quaternion_to_roll_pitch(msg->orientation, roll, pitch);
-        double vertical_distance = calculate_vertical_distance(z_translation_, roll, pitch);
+        double vertical_distance = calculate_vertical_distance(raw_z, roll, pitch);
         //RCLCPP_INFO(this->get_logger(), "Vertical distance: %f", vertical_distance);
 
 
@@ -45,10 +44,6 @@ private:
         tf_broadcaster_->sendTransform(tf);
     }
 
-    void altitude_callback(const std_msgs::msg::Float32::SharedPtr msg)
-    {
-        z_translation_ = msg->data;
-    }
 
     void quaternion_to_roll_pitch(const geometry_msgs::msg::Quaternion& q, double& roll, double& pitch)
     {
@@ -84,9 +79,7 @@ private:
 
     float z_filtered_prev_;
 
-    double z_translation_;
-    rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_subscriber_;
-    rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr altitude_subscriber_;
+    rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr imu_subscriber_;
     std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 };
 
