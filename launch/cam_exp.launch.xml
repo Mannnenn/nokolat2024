@@ -10,9 +10,10 @@
       <param name="input_ir_image_topic_name" value="/infra_cam/left/infra1/image_rect_raw"/>
       <param name="output_image_topic_name" value="/infra_cam/left/infra1/image_diff"/>
     </node>
-    <node pkg="nokolat2024" exec="infra2bivaluation" name="infra2bivaluation_1" output="screen">
+    <node pkg="nokolat2024" exec="infra2bivaluation" name="infra2bivaluation" output="screen">
       <param name="input_image_topic_name" value="/infra_cam/left/infra1/image_diff"/>
       <param name="output_image_topic_name" value="/infra_cam/left/infra1/image_diff_bivaluation"/>
+      <param name="output_cog_topic_name" value="/infra_cam/left/infra1/cog"/>
     </node>
     </group>
 
@@ -22,24 +23,25 @@
       <param name="input_ir_image_topic_name" value="/infra_cam/right/infra2/image_rect_raw"/>
       <param name="output_image_topic_name" value="/infra_cam/right/infra2/image_diff"/>
     </node>
-    <node pkg="nokolat2024" exec="infra2bivaluation" name="infra2bivaluation_2" output="screen">
+    <node pkg="nokolat2024" exec="infra2bivaluation" name="infra2bivaluation" output="screen">
       <param name="input_image_topic_name" value="/infra_cam/right/infra2/image_diff"/>
       <param name="output_image_topic_name" value="/infra_cam/right/infra2/image_diff_bivaluation"/>
+      <param name="output_cog_topic_name" value="/infra_cam/right/infra2/cog"/>
     </node>
     </group>
 
 
 
     <node pkg="nokolat2024" exec="depth_estimation" name="depth_estimation" output="screen">
-      <param name="input_left_image_topic_name" value="/infra_cam/left/infra1/image_diff_bivaluation"/>
-      <param name="input_right_image_topic_name" value="/infra_cam/right/infra2/image_diff_bivaluation"/>
-      <param name="output_image_topic_name" value="/infra_cam/depth/image"/>
-      <param name="output_mean_depth_topic_name" value="/infra_cam/mean_depth"/>
+      <param name="input_left_cog_topic_name" value="/infra_cam/left/infra1/cog"/>
+      <param name="input_right_cog_topic_name" value="/infra_cam/right/infra2/cog"/>
+      <param name="output_mean_depth_topic_name" value="/infra_cam/depth"/>
     </node>
 
     <node pkg="nokolat2024" exec="position_estimation" name="position_estimation" output="screen">
-      <param name="input_image_topic_name" value="/infra_cam/depth/image"/>
-      <param name="input_depth" value="/infra_cam/mean_depth"/>
+      <param name="input_left_cog_topic_name" value="/infra_cam/left/infra1/cog"/>
+      <param name="input_right_cog_topic_name" value="/infra_cam/right/infra2/cog"/>
+      <param name="input_depth_topic_name" value="/infra_cam/dept"/>
       <param name="output_position_topic_name" value="/infra_cam/position"/>
     </node>
 
