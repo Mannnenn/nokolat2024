@@ -66,7 +66,7 @@ private:
         float center_y = 240;
 
 
-        position_.y = (x - center_x) * depth_ / focal_length;//left as y axis.
+        position_.y = -(x - center_x) * depth_ / focal_length;//left as y axis.
         position_.z = (y - center_y) * depth_ / focal_length; //up as z axis.
         position_.x = depth_; //forward as x axis.
 

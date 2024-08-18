@@ -55,6 +55,9 @@ ament_target_dependencies(position_estimation rclcpp image_transport sensor_msgs
 add_executable(path_pub src/path_pub.cpp)
 ament_target_dependencies(path_pub rclcpp tf2_ros geometry_msgs nav_msgs)
 
+add_executable(pos_path_pub src/pos_path_pub.cpp)
+ament_target_dependencies(pos_path_pub rclcpp geometry_msgs nav_msgs)
+
 install(TARGETS
   imu2tf
   infra2bivaluation
@@ -63,6 +66,7 @@ install(TARGETS
   depth_estimation
   position_estimation
   path_pub
+  pos_path_pub
   DESTINATION lib/${PROJECT_NAME})
 
 
