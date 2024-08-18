@@ -59,17 +59,17 @@ private:
         stereo_bm_->setTextureThreshold(1);
 
         // ノイズを減らすための追加設定
-        //stereo_bm_->setPreFilterSize(9); // プリフィルタのサイズを設定
-        //stereo_bm_->setPreFilterCap(31); // プリフィルタのキャップを設定
-        //stereo_bm_->setSpeckleRange(16); // スペックル範囲を設定
-        //stereo_bm_->setSpeckleWindowSize(100); // スペックルウィンドウサイズを設定
+        stereo_bm_->setPreFilterSize(9); // プリフィルタのサイズを設定
+        stereo_bm_->setPreFilterCap(31); // プリフィルタのキャップを設定
+        stereo_bm_->setSpeckleRange(16); // スペックル範囲を設定
+        stereo_bm_->setSpeckleWindowSize(100); // スペックルウィンドウサイズを設定
 
         cv::Mat disparity;
         stereo_bm_->compute(left_image_, right_image_, disparity);
 
         cv::Mat depth_map;
         float focal_length = 640.0f;
-        float baseline = 0.95f;
+        float baseline = 10.3f;
         disparity.convertTo(disparity, CV_32F);
         depth_map = focal_length * baseline / disparity;
 
