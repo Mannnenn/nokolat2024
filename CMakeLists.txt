@@ -38,7 +38,7 @@ ament_target_dependencies(imu2tf rclcpp tf2_ros sensor_msgs geometry_msgs std_ms
 
 
 add_executable(infra2bivaluation src/infra2bivaluation.cpp)
-ament_target_dependencies(infra2bivaluation rclcpp sensor_msgs cv_bridge image_transport OpenCV)
+ament_target_dependencies(infra2bivaluation rclcpp sensor_msgs cv_bridge image_transport OpenCV geometry_msgs)
 
 add_executable(image_diff_extraction src/image_diff_extraction.cpp)
 ament_target_dependencies(image_diff_extraction rclcpp sensor_msgs cv_bridge OpenCV OpenMP)
@@ -47,13 +47,16 @@ add_executable(stereo_maching src/stereo_maching.cpp)
 ament_target_dependencies(stereo_maching rclcpp image_transport sensor_msgs cv_bridge OpenCV)
 
 add_executable(depth_estimation src/depth_estimation.cpp)
-ament_target_dependencies(depth_estimation rclcpp image_transport sensor_msgs cv_bridge OpenCV)
+ament_target_dependencies(depth_estimation rclcpp geometry_msgs)
 
 add_executable(position_estimation src/position_estimation.cpp)
 ament_target_dependencies(position_estimation rclcpp image_transport sensor_msgs cv_bridge OpenCV geometry_msgs)
 
 add_executable(path_pub src/path_pub.cpp)
 ament_target_dependencies(path_pub rclcpp tf2_ros geometry_msgs nav_msgs)
+
+add_executable(pos_path_pub src/pos_path_pub.cpp)
+ament_target_dependencies(pos_path_pub rclcpp geometry_msgs nav_msgs)
 
 install(TARGETS
   imu2tf
@@ -63,6 +66,7 @@ install(TARGETS
   depth_estimation
   position_estimation
   path_pub
+  pos_path_pub
   DESTINATION lib/${PROJECT_NAME})
 
 

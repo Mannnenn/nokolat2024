@@ -1,49 +1,79 @@
 <launch>
 
-  <node pkg="nokolat2024" exec="image_diff_extraction" name="image_diff_extraction_1" output="screen">
-    <param name="input_ir_image_topic_name" value="/infra_cam/left/infra1/image_rect_raw"/>
-    <param name="output_image_topic_name" value="/infra_cam/left/infra1/image_diff"/>
-  </node>
-  <node pkg="nokolat2024" exec="image_diff_extraction" name="image_diff_extraction_2" output="screen">
-    <param name="input_ir_image_topic_name" value="/infra_cam/right/infra2/image_rect_raw"/>
-    <param name="output_image_topic_name" value="/infra_cam/right/infra2/image_diff"/>
-  </node>
+  <!-- Define arguments for common topic names -->
+  <arg name="left_image_rect_raw" default="/infra_cam/left/infra1/image_rect_raw"/>
+  <arg name="left_image_diff" default="/infra_cam/left/infra1/image_diff"/>
+  <arg name="left_image_diff_bivaluation" default="/infra_cam/left/infra1/image_diff_bivaluation"/>
+  <arg name="left_cog" default="/infra_cam/left/infra1/cog"/>
+  
+  <arg name="right_image_rect_raw" default="/infra_cam/right/infra2/image_rect_raw"/>
+  <arg name="right_image_diff" default="/infra_cam/right/infra2/image_diff"/>
+  <arg name="right_image_diff_bivaluation" default="/infra_cam/right/infra2/image_diff_bivaluation"/>
+  <arg name="right_cog" default="/infra_cam/right/infra2/cog"/>
+  
+  <arg name="depth" default="/infra_cam/depth"/>
+  <arg name="position" default="/infra_cam/position"/>
+  <arg name="path" default="/infra_cam/path"/>
 
-  <node pkg="nokolat2024" exec="infra2bivaluation" name="infra2bivaluation_1" output="screen">
-    <param name="input_image_topic_name" value="/infra_cam/left/infra1/image_diff"/>
-    <param name="output_image_topic_name" value="/camera/camera/infra1/image_diff_bivaluation"/>
-  </node>
-  <node pkg="nokolat2024" exec="infra2bivaluation" name="infra2bivaluation_2" output="screen">
-    <param name="input_image_topic_name" value="/infra_cam/right/infra2/image_diff"/>
-    <param name="output_image_topic_name" value="/camera/camera/infra2/image_diff_bivaluation"/>
-  </node>
+  <group>
 
+    <push_ros_namespace namespace="infra_cam" />
 
-  <node pkg="nokolat2024" exec="depth_estimation" name="depth_estimation" output="screen">
-    <param name="input_left_image_topic_name" value="/camera/camera/infra1/image_diff_bivaluation"/>
-    <param name="input_right_image_topic_name" value="/camera/camera/infra2/image_diff_bivaluation"/>
-    <param name="output_image_topic_name" value="/camera/camera/depth/image"/>
-    <param name="output_mean_depth_topic_name" value="/camera/camera/mean_depth"/>
-  </node>
+    <group>
+      <push-ros-namespace namespace="left" />
+      <node pkg="nokolat2024" exec="image_diff_extraction" name="image_diff_extraction" output="screen">
+        <param name="input_ir_image_topic_name" value="$(var left_image_rect_raw)"/>
+        <param name="output_image_topic_name" value="$(var left_image_diff)"/>
+      </node>
+      <node pkg="nokolat2024" exec="infra2bivaluation" name="infra2bivaluation" output="screen">
+        <param name="input_image_topic_name" value="$(var left_image_diff)"/>
+        <param name="output_image_topic_name" value="$(var left_image_diff_bivaluation)"/>
+        <param name="output_cog_topic_name" value="$(var left_cog)"/>
+      </node>
+    </group>
 
-  <node pkg="nokolat2024" exec="position_estimation" name="position_estimation" output="screen">
-    <param name="input_image_topic_name" value="/camera/camera/depth/image"/>
-    <param name="input_depth" value="/camera/camera/mean_depth"/>
-    <param name="output_position_topic_name" value="/camera/camera/position"/>
-  </node>
+    <group>
+      <push-ros-namespace namespace="right" />
+      <node pkg="nokolat2024" exec="image_diff_extraction" name="image_diff_extraction" output="screen">
+        <param name="input_ir_image_topic_name" value="$(var right_image_rect_raw)"/>
+        <param name="output_image_topic_name" value="$(var right_image_diff)"/>
+      </node>
+      <node pkg="nokolat2024" exec="infra2bivaluation" name="infra2bivaluation" output="screen">
+        <param name="input_image_topic_name" value="$(var right_image_diff)"/>
+        <param name="output_image_topic_name" value="$(var right_image_diff_bivaluation)"/>
+        <param name="output_cog_topic_name" value="$(var right_cog)"/>
+      </node>
+    </group>
 
-  <node pkg="nokolat2024" exec="position_estimation" name="position_estimation" output="screen">
-    <param name="input_image_topic_name" value="/camera/camera/depth/image"/>
-    <param name="input_depth" value="/camera/camera/mean_depth"/>
-    <param name="output_position_topic_name" value="/camera/camera/position"/>
-  </node>
+    <node pkg="nokolat2024" exec="depth_estimation" name="depth_estimation" output="screen">
+      <param name="input_left_cog_topic_name" value="$(var left_cog)"/>
+      <param name="input_right_cog_topic_name" value="$(var right_cog)"/>
+      <param name="output_depth_topic_name" value="$(var depth)"/>
+    </node>
+
+    <node pkg="nokolat2024" exec="position_estimation" name="position_estimation" output="screen">
+      <param name="input_left_cog_topic_name" value="$(var left_cog)"/>
+      <param name="input_right_cog_topic_name" value="$(var right_cog)"/>
+      <param name="input_depth_topic_name" value="$(var depth)"/>
+      <param name="output_position_topic_name" value="$(var position)"/>
+    </node>
+
+    <node pkg="nokolat2024" exec="pos_path_pub" name="pos_path_pub" output="screen">
+      <param name="input_position_topic_name" value="$(var position)"/>
+      <param name="output_path_topic_name" value="$(var path)"/>
+    </node>
+
+  </group>
 
   <node pkg="nokolat2024" exec="imu2tf" name="imu_to_tf_node" output="screen"/>
-  
-  <!--<node pkg="rviz2" exec="rviz2" name="rviz" args="-d $(find-pkg-share nokolat2024)/rviz/rvizmodel.rviz" output="screen"/>-->
 
+
+  <!--
+  <node pkg="rviz2" exec="rviz2" name="rviz" args="-d $(find-pkg-share nokolat2024)/rviz/rvizmodel.rviz" output="screen"/>
   <node pkg="nokolat2024" exec="path_pub" name="path_pub" output="log"/>
-
+  -->
   <node pkg="micro_ros_agent" exec="micro_ros_agent" name="micro_ros_agent" output="screen" args="udp4 --port 8888"/>
+
+
 
 </launch>

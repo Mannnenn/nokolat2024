@@ -3,7 +3,6 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
-#include <omp.h>
 
 class ImageDifferenceNode : public rclcpp::Node
 {
@@ -46,27 +45,26 @@ private:
 
     cv::Mat current_frame = cv_ptr->image;
 
-    if (!previous_frame_.empty())
+    if (previous_frame_.empty())
     {
-      cv::Mat diff = cv::Mat::zeros(current_frame.size(), current_frame.type());
-
-      // OpenMPを使用した並列化
-#pragma omp parallel for
-      for (int i = 0; i < current_frame.rows; ++i)
-      {
-        for (int j = 0; j < current_frame.cols; ++j)
-        {
-          diff.at<uchar>(i, j) = std::abs(current_frame.at<uchar>(i, j) - previous_frame_.at<uchar>(i, j));
-        }
-      }
-
-
-      // 差分画像をパブリッシュ
-      auto diff_msg = cv_bridge::CvImage(std_msgs::msg::Header(), "mono8", diff).toImageMsg();
-      publisher_->publish(*diff_msg);
+      previous_frame_ = current_frame.clone();
+      previous_frame_.convertTo(previous_frame_, CV_32F); // float型に変換
+      return;
     }
 
-    previous_frame_ = current_frame;
+    // 移動平均を更新
+    cv::accumulateWeighted(current_frame, previous_frame_, 0.01);
+
+    // 現在のフレームと移動平均との差を計算
+    cv::Mat previous_frame_abs;
+    cv::convertScaleAbs(previous_frame_, previous_frame_abs);
+    cv::Mat diff;
+    cv::absdiff(current_frame, previous_frame_abs, diff);
+
+    // 差分画像をパブリッシュ
+    auto diff_msg = cv_bridge::CvImage(std_msgs::msg::Header(), "mono8", diff).toImageMsg();
+    publisher_->publish(*diff_msg);
+
   }
 
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_;
