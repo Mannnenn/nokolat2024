@@ -1,38 +1,49 @@
 <launch>
 
-  <node pkg="nokolat2024" exec="image_diff_extraction" name="image_diff_extraction_1" output="screen">
-    <param name="input_ir_image_topic_name" value="/infra_cam/left/infra1/image_rect_raw"/>
-    <param name="output_image_topic_name" value="/infra_cam/left/infra1/image_diff"/>
-  </node>
-  <node pkg="nokolat2024" exec="image_diff_extraction" name="image_diff_extraction_2" output="screen">
-    <param name="input_ir_image_topic_name" value="/infra_cam/right/infra2/image_rect_raw"/>
-    <param name="output_image_topic_name" value="/infra_cam/right/infra2/image_diff"/>
-  </node>
+  <group>
 
-<!--
-  <node pkg="nokolat2024" exec="infra2bivaluation" name="infra2bivaluation_1" output="screen">
-    <param name="input_image_topic_name" value="/infra_cam/left/infra1/image_diff"/>
-    <param name="output_image_topic_name" value="/camera/camera/infra1/image_diff_bivaluation"/>
-  </node>
-  <node pkg="nokolat2024" exec="infra2bivaluation" name="infra2bivaluation_2" output="screen">
-    <param name="input_image_topic_name" value="/infra_cam/right/infra2/image_diff"/>
-    <param name="output_image_topic_name" value="/camera/camera/infra2/image_diff_bivaluation"/>
-  </node>
+    <push_ros_namespace namespace="infra_cam" />
 
--->
+    <group>
+      <push-ros-namespace namespace="left" />
+    <node pkg="nokolat2024" exec="image_diff_extraction" name="image_diff_extraction" output="screen">
+      <param name="input_ir_image_topic_name" value="/infra_cam/left/infra1/image_rect_raw"/>
+      <param name="output_image_topic_name" value="/infra_cam/left/infra1/image_diff"/>
+    </node>
+    <node pkg="nokolat2024" exec="infra2bivaluation" name="infra2bivaluation_1" output="screen">
+      <param name="input_image_topic_name" value="/infra_cam/left/infra1/image_diff"/>
+      <param name="output_image_topic_name" value="/infra_cam/left/infra1/image_diff_bivaluation"/>
+    </node>
+    </group>
 
-  <node pkg="nokolat2024" exec="depth_estimation" name="depth_estimation" output="screen">
-    <param name="input_left_image_topic_name" value="/camera/camera/infra1/image_diff"/>
-    <param name="input_right_image_topic_name" value="/camera/camera/infra2/image_diff"/>
-    <param name="output_image_topic_name" value="/camera/camera/depth/image"/>
-    <param name="output_mean_depth_topic_name" value="/camera/camera/mean_depth"/>
-  </node>
+    <group>
+    <push-ros-namespace namespace="right" />
+    <node pkg="nokolat2024" exec="image_diff_extraction" name="image_diff_extraction" output="screen">
+      <param name="input_ir_image_topic_name" value="/infra_cam/right/infra2/image_rect_raw"/>
+      <param name="output_image_topic_name" value="/infra_cam/right/infra2/image_diff"/>
+    </node>
+    <node pkg="nokolat2024" exec="infra2bivaluation" name="infra2bivaluation_2" output="screen">
+      <param name="input_image_topic_name" value="/infra_cam/right/infra2/image_diff"/>
+      <param name="output_image_topic_name" value="/infra_cam/right/infra2/image_diff_bivaluation"/>
+    </node>
+    </group>
 
-  <node pkg="nokolat2024" exec="position_estimation" name="position_estimation" output="screen">
-    <param name="input_image_topic_name" value="/camera/camera/depth/image"/>
-    <param name="input_depth" value="/camera/camera/mean_depth"/>
-    <param name="output_position_topic_name" value="/camera/camera/position"/>
-  </node>
+
+
+    <node pkg="nokolat2024" exec="depth_estimation" name="depth_estimation" output="screen">
+      <param name="input_left_image_topic_name" value="/infra_cam/left/infra1/image_diff_bivaluation"/>
+      <param name="input_right_image_topic_name" value="/infra_cam/right/infra2/image_diff_bivaluation"/>
+      <param name="output_image_topic_name" value="/infra_cam/depth/image"/>
+      <param name="output_mean_depth_topic_name" value="/infra_cam/mean_depth"/>
+    </node>
+
+    <node pkg="nokolat2024" exec="position_estimation" name="position_estimation" output="screen">
+      <param name="input_image_topic_name" value="/infra_cam/depth/image"/>
+      <param name="input_depth" value="/infra_cam/mean_depth"/>
+      <param name="output_position_topic_name" value="/infra_cam/position"/>
+    </node>
+
+  </group>
 
   <node pkg="nokolat2024" exec="imu2tf" name="imu_to_tf_node" output="screen"/>
 
