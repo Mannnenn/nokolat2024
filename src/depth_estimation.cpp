@@ -43,7 +43,7 @@ private:
 
     void processDisparity() {
         if (std::isnan(left_cog) || std::isnan(right_cog)) {
-            RCLCPP_WARN(this->get_logger(), "left_cog or right_cog is NaN");
+            //RCLCPP_WARN(this->get_logger(), "left_cog or right_cog is NaN");
             return;
         }
 
