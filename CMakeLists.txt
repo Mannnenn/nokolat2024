@@ -67,10 +67,12 @@ add_executable(stereo_maching src/stereo_maching.cpp)
 ament_target_dependencies(stereo_maching rclcpp image_transport sensor_msgs cv_bridge OpenCV)
 
 add_executable(depth_estimation src/depth_estimation.cpp)
-ament_target_dependencies(depth_estimation rclcpp geometry_msgs)
+ament_target_dependencies(depth_estimation rclcpp geometry_msgs yaml-cpp)
+target_link_libraries(depth_estimation yaml-cpp)
 
 add_executable(position_estimation src/position_estimation.cpp)
-ament_target_dependencies(position_estimation rclcpp image_transport sensor_msgs cv_bridge OpenCV geometry_msgs)
+ament_target_dependencies(position_estimation rclcpp image_transport sensor_msgs cv_bridge OpenCV geometry_msgs yaml-cpp)
+target_link_libraries(position_estimation yaml-cpp)
 
 
 add_executable(point2pointStamped src/point2pointStamped.cpp)

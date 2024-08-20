@@ -8,6 +8,7 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
 #include <yaml-cpp/yaml.h>
+#include <iostream>
 
 class StereoMatchingNode : public rclcpp::Node
 {
@@ -31,41 +32,75 @@ public:
         this->get_parameter("output_right_cog_topic_name", output_right_cog_topic_name);
 
         // YAMLファイルのパスを取得する
-        this->declare_parameter<std::string>("yaml_file", "/param/camera_param.yaml");
-        std::string yaml_file_path;
-        this->get_parameter("yaml_file", yaml_file_path);
+        this->declare_parameter<std::string>("yaml_left_file", "/param/camera_param_left.yaml");
+        std::string yaml_left_file_path;
+        this->get_parameter("yaml_left_file", yaml_left_file_path);
 
-        // YAMLファイルを読み込む
-        YAML::Node config = YAML::LoadFile(yaml_file_path);
-        auto camera_info = config["camera_info"];
+        this->declare_parameter<std::string>("yaml_right_file", "/param/camera_param_right.yaml");
+        std::string yaml_right_file_path;
+        this->get_parameter("yaml_right_file", yaml_right_file_path);
+
+        try {
+            // YAMLファイルを読み込む
+            YAML::Node config_left = YAML::LoadFile(yaml_left_file_path);
+            if (!config_left["camera_info_left"]) {
+                throw std::runtime_error("camera_info_left not found in " + yaml_left_file_path);
+            }
+            camera_info_left = config_left["camera_info_left"];
+
+            YAML::Node config_right = YAML::LoadFile(yaml_right_file_path);
+            if (!config_right["camera_info_right"]) {
+                throw std::runtime_error("camera_info_right not found in " + yaml_right_file_path);
+            }
+            camera_info_right = config_right["camera_info_right"];
+        } catch (const YAML::BadFile& e) {
+            RCLCPP_ERROR(this->get_logger(), "Failed to load YAML file: %s", e.what());
+            return;
+        } catch (const std::runtime_error& e) {
+            RCLCPP_ERROR(this->get_logger(), "Runtime error: %s", e.what());
+            return;
+        } catch (const std::exception& e) {
+            RCLCPP_ERROR(this->get_logger(), "Exception: %s", e.what());
+            return;
+        }
 
         // 解像度を取得
-        int width = camera_info["width"].as<int>();
-        int height = camera_info["height"].as<int>();
+        int width = camera_info_left["width"].as<int>();
+        int height = camera_info_left["height"].as<int>();
         cv::Size image_size(width, height);
 
         camera_matrix_left = (cv::Mat_<double>(3, 3) << 
-            camera_info["K"][0].as<double>(), camera_info["K"][1].as<double>(), camera_info["K"][2].as<double>(),
-            camera_info["K"][3].as<double>(), camera_info["K"][4].as<double>(), camera_info["K"][5].as<double>(),
-            camera_info["K"][6].as<double>(), camera_info["K"][7].as<double>(), camera_info["K"][8].as<double>()
+            camera_info_left["K"][0].as<double>(), camera_info_left["K"][1].as<double>(), camera_info_left["K"][2].as<double>(),
+            camera_info_left["K"][3].as<double>(), camera_info_left["K"][4].as<double>(), camera_info_left["K"][5].as<double>(),
+            camera_info_left["K"][6].as<double>(), camera_info_left["K"][7].as<double>(), camera_info_left["K"][8].as<double>()
+        );
+
+        camera_matrix_right = (cv::Mat_<double>(3, 3) << 
+            camera_info_right["K"][0].as<double>(), camera_info_right["K"][1].as<double>(), camera_info_right["K"][2].as<double>(),
+            camera_info_right["K"][3].as<double>(), camera_info_right["K"][4].as<double>(), camera_info_right["K"][5].as<double>(),
+            camera_info_right["K"][6].as<double>(), camera_info_right["K"][7].as<double>(), camera_info_right["K"][8].as<double>()
         );
 
         dist_coeffs_left = (cv::Mat_<double>(1, 5) << 
-            camera_info["D"][0].as<double>(), camera_info["D"][1].as<double>(), camera_info["D"][2].as<double>(), 
-            camera_info["D"][3].as<double>(), camera_info["D"][4].as<double>()
+            camera_info_left["D"][0].as<double>(), camera_info_left["D"][1].as<double>(), camera_info_left["D"][2].as<double>(), 
+            camera_info_left["D"][3].as<double>(), camera_info_left["D"][4].as<double>()
         );
 
-        camera_matrix_right = camera_matrix_left.clone();
-        dist_coeffs_right = dist_coeffs_left.clone();
+        dist_coeffs_right = (cv::Mat_<double>(1, 5) << 
+            camera_info_right["D"][0].as<double>(), camera_info_right["D"][1].as<double>(), camera_info_right["D"][2].as<double>(), 
+            camera_info_right["D"][3].as<double>(), camera_info_right["D"][4].as<double>()
+        );
+
+        //R and P is the rotation and projection matrix,left to right camera,it`s same as the extrinsic parameter
 
         R = (cv::Mat_<double>(3, 3) << 
-            camera_info["R"][0].as<double>(), camera_info["R"][1].as<double>(), camera_info["R"][2].as<double>(),
-            camera_info["R"][3].as<double>(), camera_info["R"][4].as<double>(), camera_info["R"][5].as<double>(),
-            camera_info["R"][6].as<double>(), camera_info["R"][7].as<double>(), camera_info["R"][8].as<double>()
+            camera_info_right["R"][0].as<double>(), camera_info_right["R"][1].as<double>(), camera_info_right["R"][2].as<double>(),
+            camera_info_right["R"][3].as<double>(), camera_info_right["R"][4].as<double>(), camera_info_right["R"][5].as<double>(),
+            camera_info_right["R"][6].as<double>(), camera_info_right["R"][7].as<double>(), camera_info_right["R"][8].as<double>()
         );
 
         // YAMLファイルから投影行列Pを読み込む
-        auto P = camera_info["P"].as<std::vector<double>>();
+        auto P = camera_info_right["P"].as<std::vector<double>>();
         T = (cv::Mat_<double>(3, 1) << P[3], P[7], 0.0);  // 平行移動ベクトルのx成分とy成分を設定
 
 
@@ -140,6 +175,9 @@ private:
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr right_image_subscriber;
     rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr cog_left_publisher_;
     rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr cog_right_publisher_;
+
+    YAML::Node camera_info_left;
+    YAML::Node camera_info_right;
 
     cv::Mat left_image, right_image;
     cv::Mat camera_matrix_left, dist_coeffs_left, camera_matrix_right, dist_coeffs_right;

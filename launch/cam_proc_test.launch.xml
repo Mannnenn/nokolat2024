@@ -4,6 +4,20 @@
         <param name="input_right_image_topic_name" value="/camera/camera/infra2/image_rect_raw"/>
         <param name="output_left_cog_topic_name" value="/cog_left"/>
         <param name="output_right_cog_topic_name" value="/cog_right"/>
-        <param name="yaml_file" value="$(find-pkg-share nokolat2024)/param/camera_param_right.yaml"/>
+        <param name="yaml_left_file" value="$(find-pkg-share nokolat2024)/param/camera_param_left.yaml"/>
+        <param name="yaml_right_file" value="$(find-pkg-share nokolat2024)/param/camera_param_right.yaml"/>
+    </node>
+    <node pkg="nokolat2024" exec="depth_estimation" name="depth_estimation" output="screen">
+        <param name="input_left_cog_topic_name" value="/cog_left"/>
+        <param name="input_right_cog_topic_name" value="/cog_right"/>
+        <param name="output_depth_topic_name" value="/depth"/>
+        <param name="yaml_right_file" value="$(find-pkg-share nokolat2024)/param/camera_param_right.yaml"/>
+    </node>
+    <node pkg="nokolat2024" exec="position_estimation" name="position_estimation" output="screen">
+        <param name="input_left_cog_topic_name" value="/cog_left"/>
+        <param name="input_right_cog_topic_name" value="/cog_right"/>
+        <param name="input_depth_topic_name" value="/depth"/>
+        <param name="output_position_topic_name" value="/position"/>
+        <param name="yaml_right_file" value="$(find-pkg-share nokolat2024)/param/camera_param_right.yaml"/>
     </node>
 </launch>

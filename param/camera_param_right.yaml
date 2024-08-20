@@ -1,4 +1,4 @@
-camera_info:
+camera_info_right:
   height: 480
   width: 848
   camera_name: /camera/camera/infra2
