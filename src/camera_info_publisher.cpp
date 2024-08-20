@@ -18,6 +18,7 @@ public:
         YAML::Node config = YAML::LoadFile(yaml_file_path);
         auto camera_info = config["camera_info"];
 
+        msg.header.frame_id = camera_info["camera_name"].as<std::string>();
         msg.height = camera_info["height"].as<int>();
         msg.width = camera_info["width"].as<int>();
         msg.distortion_model = camera_info["distortion_model"].as<std::string>();

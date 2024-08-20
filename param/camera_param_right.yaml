@@ -1,6 +1,7 @@
 camera_info:
   height: 480
   width: 848
+  camera_name: /camera/camera/infra2
   distortion_model: plumb_bob
   D: [0.011606, -0.003945, 0.001200, 0.001164, 0.000000]
   K:

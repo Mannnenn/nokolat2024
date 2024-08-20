@@ -1,10 +1,9 @@
 <launch>
-    <node pkg="nokolat2024" exec="camera_info_publisher" name="camera_info_publisher_node_left" output="screen">
-        <param name="yaml_file" value="$(find-pkg-share nokolat2024)/param/camera_param_left.yaml"/>
-        <remap from="camera_info" to="camera/camera/left_info"/>
-    </node>
-      <node pkg="nokolat2024" exec="camera_info_publisher" name="camera_info_publisher_node_right" output="screen">
+    <node pkg="nokolat2024" exec="cog_corrected" name="cog_corrected" output="screen">
+        <param name="input_left_image_topic_name" value="/camera/camera/infra1/image_rect_raw"/>
+        <param name="input_right_image_topic_name" value="/camera/camera/infra2/image_rect_raw"/>
+        <param name="output_left_cog_topic_name" value="/cog_left"/>
+        <param name="output_right_cog_topic_name" value="/cog_right"/>
         <param name="yaml_file" value="$(find-pkg-share nokolat2024)/param/camera_param_right.yaml"/>
-        <remap from="camera_info" to="camera/camera/right_info"/>
     </node>
 </launch>

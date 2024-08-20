@@ -80,6 +80,10 @@ add_executable(camera_info_publisher src/camera_info_publisher.cpp)
 ament_target_dependencies(camera_info_publisher rclcpp sensor_msgs camera_info_manager yaml-cpp)
 target_link_libraries(camera_info_publisher yaml-cpp)
 
+add_executable(cog_corrected src/cog_corrected.cpp)
+ament_target_dependencies(cog_corrected rclcpp sensor_msgs geometry_msgs image_transport cv_bridge OpenCV yaml-cpp)
+target_link_libraries(cog_corrected yaml-cpp)
+
 install(TARGETS
   imu2tf
   infra2bivaluation
@@ -89,6 +93,7 @@ install(TARGETS
   position_estimation
   point2pointStamped
   camera_info_publisher
+  cog_corrected
   DESTINATION lib/${PROJECT_NAME})
 
 
