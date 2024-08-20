@@ -14,12 +14,15 @@ find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(urdf REQUIRED)
 find_package(imutof REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 find_package(cv_bridge REQUIRED)
 find_package(image_transport)
 find_package(geometry_msgs)
 find_package(OpenCV)
 find_package(nav_msgs)
+find_package(camera_info_manager REQUIRED)
+
 
 find_package(OpenMP REQUIRED)
 
@@ -28,6 +31,23 @@ install(
   DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}/
 )
+
+install(
+  DIRECTORY param
+  DESTINATION share/${PROJECT_NAME}/
+)
+
+install(
+  DIRECTORY rviz
+  DESTINATION share/${PROJECT_NAME}/
+)
+
+
+install(
+  DIRECTORY urdf
+  DESTINATION share/${PROJECT_NAME}/
+)
+
 
 find_package(rosidl_default_generators REQUIRED)
 
@@ -52,11 +72,13 @@ ament_target_dependencies(depth_estimation rclcpp geometry_msgs)
 add_executable(position_estimation src/position_estimation.cpp)
 ament_target_dependencies(position_estimation rclcpp image_transport sensor_msgs cv_bridge OpenCV geometry_msgs)
 
-add_executable(path_pub src/path_pub.cpp)
-ament_target_dependencies(path_pub rclcpp tf2_ros geometry_msgs nav_msgs)
 
-add_executable(pos_path_pub src/pos_path_pub.cpp)
-ament_target_dependencies(pos_path_pub rclcpp geometry_msgs nav_msgs)
+add_executable(point2pointStamped src/point2pointStamped.cpp)
+ament_target_dependencies(point2pointStamped rclcpp geometry_msgs nav_msgs)
+
+add_executable(camera_info_publisher src/camera_info_publisher.cpp)
+ament_target_dependencies(camera_info_publisher rclcpp sensor_msgs camera_info_manager yaml-cpp)
+target_link_libraries(camera_info_publisher yaml-cpp)
 
 install(TARGETS
   imu2tf
@@ -65,8 +87,8 @@ install(TARGETS
   stereo_maching
   depth_estimation
   position_estimation
-  path_pub
-  pos_path_pub
+  point2pointStamped
+  camera_info_publisher
   DESTINATION lib/${PROJECT_NAME})
 
 

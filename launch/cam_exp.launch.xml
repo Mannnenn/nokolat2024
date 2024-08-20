@@ -58,7 +58,7 @@
       <param name="output_position_topic_name" value="$(var position)"/>
     </node>
 
-    <node pkg="nokolat2024" exec="pos_path_pub" name="pos_path_pub" output="screen">
+    <node pkg="nokolat2024" exec="point2pointStamped" name="point2pointStamped" output="screen">
       <param name="input_position_topic_name" value="$(var position)"/>
       <param name="output_path_topic_name" value="$(var path)"/>
     </node>

@@ -1,0 +1,10 @@
+<launch>
+    <node pkg="nokolat2024" exec="camera_info_publisher" name="camera_info_publisher_node_left" output="screen">
+        <param name="yaml_file" value="$(find-pkg-share nokolat2024)/param/camera_param_left.yaml"/>
+        <remap from="camera_info" to="camera/camera/left_info"/>
+    </node>
+      <node pkg="nokolat2024" exec="camera_info_publisher" name="camera_info_publisher_node_right" output="screen">
+        <param name="yaml_file" value="$(find-pkg-share nokolat2024)/param/camera_param_right.yaml"/>
+        <remap from="camera_info" to="camera/camera/right_info"/>
+    </node>
+</launch>

@@ -14,6 +14,9 @@
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
+  <depend>camera_info_manager</depend>
+  <depend>yaml</depend>
+
 
 
   <depend>cv_bridge</depend>
