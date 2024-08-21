@@ -14,12 +14,15 @@ find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(urdf REQUIRED)
 find_package(imutof REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 find_package(cv_bridge REQUIRED)
 find_package(image_transport)
 find_package(geometry_msgs)
 find_package(OpenCV)
 find_package(nav_msgs)
+find_package(camera_info_manager REQUIRED)
+
 
 find_package(OpenMP REQUIRED)
 
@@ -29,6 +32,23 @@ install(
   DESTINATION share/${PROJECT_NAME}/
 )
 
+install(
+  DIRECTORY param
+  DESTINATION share/${PROJECT_NAME}/
+)
+
+install(
+  DIRECTORY rviz
+  DESTINATION share/${PROJECT_NAME}/
+)
+
+
+install(
+  DIRECTORY urdf
+  DESTINATION share/${PROJECT_NAME}/
+)
+
+
 find_package(rosidl_default_generators REQUIRED)
 
 
@@ -37,36 +57,35 @@ add_executable(imu2tf src/imu2tf.cpp)
 ament_target_dependencies(imu2tf rclcpp tf2_ros sensor_msgs geometry_msgs std_msgs)
 
 
-add_executable(infra2bivaluation src/infra2bivaluation.cpp)
-ament_target_dependencies(infra2bivaluation rclcpp sensor_msgs cv_bridge image_transport OpenCV geometry_msgs)
 
 add_executable(image_diff_extraction src/image_diff_extraction.cpp)
 ament_target_dependencies(image_diff_extraction rclcpp sensor_msgs cv_bridge OpenCV OpenMP)
 
-add_executable(stereo_maching src/stereo_maching.cpp)
-ament_target_dependencies(stereo_maching rclcpp image_transport sensor_msgs cv_bridge OpenCV)
 
 add_executable(depth_estimation src/depth_estimation.cpp)
-ament_target_dependencies(depth_estimation rclcpp geometry_msgs)
+ament_target_dependencies(depth_estimation rclcpp geometry_msgs yaml-cpp)
+target_link_libraries(depth_estimation yaml-cpp)
 
 add_executable(position_estimation src/position_estimation.cpp)
-ament_target_dependencies(position_estimation rclcpp image_transport sensor_msgs cv_bridge OpenCV geometry_msgs)
+ament_target_dependencies(position_estimation rclcpp image_transport sensor_msgs cv_bridge OpenCV geometry_msgs yaml-cpp)
+target_link_libraries(position_estimation yaml-cpp)
 
-add_executable(path_pub src/path_pub.cpp)
-ament_target_dependencies(path_pub rclcpp tf2_ros geometry_msgs nav_msgs)
 
-add_executable(pos_path_pub src/pos_path_pub.cpp)
-ament_target_dependencies(pos_path_pub rclcpp geometry_msgs nav_msgs)
+add_executable(point2pointStamped src/point2pointStamped.cpp)
+ament_target_dependencies(point2pointStamped rclcpp geometry_msgs nav_msgs)
+
+
+add_executable(cog_corrected src/cog_corrected.cpp)
+ament_target_dependencies(cog_corrected rclcpp sensor_msgs geometry_msgs image_transport cv_bridge OpenCV yaml-cpp)
+target_link_libraries(cog_corrected yaml-cpp)
 
 install(TARGETS
   imu2tf
-  infra2bivaluation
   image_diff_extraction
-  stereo_maching
   depth_estimation
   position_estimation
-  path_pub
-  pos_path_pub
+  point2pointStamped
+  cog_corrected
   DESTINATION lib/${PROJECT_NAME})
 
 

@@ -14,7 +14,8 @@
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
-
+  <depend>camera_info_manager</depend>
+  <depend>yaml</depend>
 
   <depend>cv_bridge</depend>
   <depend>image_transport</depend>
@@ -31,7 +32,6 @@
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
-
 
 
   <export>

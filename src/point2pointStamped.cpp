@@ -18,7 +18,6 @@ public:
         std::string output_path_topic_name;
         this->get_parameter("output_path_topic_name", output_path_topic_name);
 
-
         publisher_ = this->create_publisher<geometry_msgs::msg::PointStamped>(output_path_topic_name, 10);
         subscriber_ = this->create_subscription<geometry_msgs::msg::Point>(
             input_position_topic_name, 10, std::bind(&PathPublisher::point_callback, this, std::placeholders::_1));
@@ -27,7 +26,7 @@ public:
 private:
     void point_callback(const geometry_msgs::msg::Point::SharedPtr msg)
     {
-        if(count == 10)
+        if (count == 10)
         {
             count = 0;
             geometry_msgs::msg::PointStamped pose;
@@ -35,7 +34,7 @@ private:
             pose.header.stamp = this->get_clock()->now();
             pose.point = *msg;
 
-            publisher_ -> publish(pose);
+            publisher_->publish(pose);
         }
         count++;
     }
