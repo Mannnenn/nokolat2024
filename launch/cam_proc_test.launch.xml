@@ -14,7 +14,9 @@
 
     <arg name="depth" default="/infra_cam/depth" />
     <arg name="position" default="/infra_cam/position" />
-    <arg name="path" default="/infra_cam/path" />
+    <arg name="position_stamped" default="/infra_cam/position_stamped" />
+
+    <arg name="imu_tof" default="/imu_tof" />
 
     <arg name="camera_param_left"
         default="$(find-pkg-share nokolat2024)/param/camera_param_left.yaml" />
@@ -68,19 +70,26 @@
 
         <node pkg="nokolat2024" exec="point2pointStamped" name="point2pointStamped" output="screen">
             <param name="input_position_topic_name" value="$(var position)" />
-            <param name="output_path_topic_name" value="$(var path)" />
+            <param name="output_stamped_topic_name" value="$(var position_stamped)" />
+        </node>
+
+        <node pkg="nokolat2024" exec="tf_publisher" name="tf_publisher" output="screen">
+            <param name="input_position_topic_name" value="$(var position_stamped)" />
+            <param name="input_imu_tof_topic_name" value="$(var imu_tof)" />
         </node>
 
     </group>
 
-    <node pkg="nokolat2024" exec="imu2tf" name="imu_to_tf_node" output="screen" />
+    <node pkg="tf2_ros" exec="static_transform_publisher" name="map_to_camera"
+        output="screen" args="0 0 3 0 0.2164396 0 0.976296 map camera_link" />
+
+    <node pkg="tf2_ros" exec="static_transform_publisher" name="camera_to_left"
+        output="screen" args="0.065 0 0 0 0 0 1 camera_link left_camera_link" />
 
 
-    <!--
-  <node pkg="rviz2" exec="rviz2" name="rviz" args="-d $(find-pkg-share
-    nokolat2024)/rviz/rvizmodel.rviz" output="screen"/>
-  <node pkg="nokolat2024" exec="path_pub" name="path_pub" output="log"/>
-  -->
+    <node pkg="rviz2" exec="rviz2" name="rviz"
+        args="-d $(find-pkg-share nokolat2024)/rviz/rvizmodel.rviz" output="screen" />
+
     <node pkg="micro_ros_agent" exec="micro_ros_agent" name="micro_ros_agent" output="screen"
         args="udp4 --port 8888" />
 
