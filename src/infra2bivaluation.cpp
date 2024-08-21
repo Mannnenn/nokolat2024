@@ -22,15 +22,14 @@ public:
     std::string output_cog_topic_name;
     this->get_parameter("output_cog_topic_name", output_cog_topic_name);
 
+    // サブスクライバーの設定
+    subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
+        input_image_topic_name, 10,
+        std::bind(&ImageProcessor::image_callback, this, std::placeholders::_1));
 
-	// サブスクライバーの設定
-	subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
-	  input_image_topic_name, 10,
-	  std::bind(&ImageProcessor::image_callback, this, std::placeholders::_1));
-
-	// パブリッシャーの設定
-	image_publisher_ = this->create_publisher<sensor_msgs::msg::Image>(output_image_topic_name, 10);
-  cog_publisher_ = this->create_publisher<geometry_msgs::msg::Point>(output_cog_topic_name, 10);
+    // パブリッシャーの設定
+    image_publisher_ = this->create_publisher<sensor_msgs::msg::Image>(output_image_topic_name, 10);
+    cog_publisher_ = this->create_publisher<geometry_msgs::msg::Point>(output_cog_topic_name, 10);
   }
 
 private:
@@ -41,14 +40,14 @@ private:
     {
       cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::MONO8);
     }
-    catch (cv_bridge::Exception& e)
+    catch (cv_bridge::Exception &e)
     {
       RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
       return;
     }
 
     // 2値化
-    cv::Mat& img = cv_ptr->image;
+    cv::Mat &img = cv_ptr->image;
     cv::threshold(img, img, 80, 255, cv::THRESH_BINARY);
 
     // 重心のxとyの値をパブリッシュ
@@ -63,21 +62,20 @@ private:
     cog_publisher_->publish(cog_msg);
     // 変換された画像をROSメッセージに変換してパブリッシュ
     cv_bridge::CvImage out_msg;
-    out_msg.header = msg->header; // タイムスタンプとフレームIDをコピー
+    out_msg.header = msg->header;                           // タイムスタンプとフレームIDをコピー
     out_msg.encoding = sensor_msgs::image_encodings::MONO8; // エンコーディングを設定
-    out_msg.image = img; // 画像データを設定
+    out_msg.image = img;                                    // 画像データを設定
 
     // パブリッシュ
     image_publisher_->publish(*out_msg.toImageMsg());
   }
-
 
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr image_publisher_;
   rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr cog_publisher_;
 };
 
-int main(int argc, char * argv[])
+int main(int argc, char *argv[])
 {
   rclcpp::init(argc, argv);
   rclcpp::spin(std::make_shared<ImageProcessor>());

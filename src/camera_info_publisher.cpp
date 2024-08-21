@@ -23,9 +23,9 @@ public:
         msg.width = camera_info["width"].as<int>();
         msg.distortion_model = camera_info["distortion_model"].as<std::string>();
         msg.d = camera_info["D"].as<std::vector<double>>();
-        msg.k = camera_info["K"].as<std::array<double,9>>();
-        msg.r = camera_info["R"].as<std::array<double,9>>();
-        msg.p = camera_info["P"].as<std::array<double,12>>();
+        msg.k = camera_info["K"].as<std::array<double, 9>>();
+        msg.r = camera_info["R"].as<std::array<double, 9>>();
+        msg.p = camera_info["P"].as<std::array<double, 12>>();
 
         publisher = this->create_publisher<sensor_msgs::msg::CameraInfo>("camera_info", 10);
         timer = this->create_wall_timer(
@@ -38,7 +38,7 @@ private:
     void timer_callback()
     {
         publisher->publish(msg);
-        //RCLCPP_INFO(this->get_logger(), "カメラ情報をパブリッシュしました");
+        // RCLCPP_INFO(this->get_logger(), "カメラ情報をパブリッシュしました");
     }
 
     rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr publisher;

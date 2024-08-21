@@ -6,8 +6,6 @@
 
 #include <cmath>
 
-
-
 class ImuToTfNode : public rclcpp::Node
 {
 public:
@@ -33,8 +31,7 @@ private:
 
         quaternion_to_roll_pitch(msg->orientation, roll, pitch);
         double vertical_distance = calculate_vertical_distance(raw_z, roll, pitch);
-        //RCLCPP_INFO(this->get_logger(), "Vertical distance: %f", vertical_distance);
-
+        // RCLCPP_INFO(this->get_logger(), "Vertical distance: %f", vertical_distance);
 
         tf.header.stamp = this->now();
         tf.header.frame_id = "base_link";
@@ -46,7 +43,7 @@ private:
 
         tf_broadcaster_->sendTransform(tf);
 
-        //printf("x: %f, y: %f, z: %f\n", tf.transform.translation.x, tf.transform.translation.y, tf.transform.translation.z);
+        // printf("x: %f, y: %f, z: %f\n", tf.transform.translation.x, tf.transform.translation.y, tf.transform.translation.z);
     }
 
     void position_callback(const geometry_msgs::msg::Point::SharedPtr msg)
@@ -54,8 +51,7 @@ private:
         position_ = *msg;
     }
 
-
-    void quaternion_to_roll_pitch(const geometry_msgs::msg::Quaternion& q, double& roll, double& pitch)
+    void quaternion_to_roll_pitch(const geometry_msgs::msg::Quaternion &q, double &roll, double &pitch)
     {
         // roll (x-axis rotation)
         double sinr_cosp = 2.0 * (q.w * q.x + q.y * q.z);
@@ -70,14 +66,12 @@ private:
             pitch = std::asin(sinp);
     }
 
-    double calculate_vertical_distance(double z_translation_, double roll,double pitch)
+    double calculate_vertical_distance(double z_translation_, double roll, double pitch)
     {
         // Assuming z_translation_ is the hypotenuse of a right triangle,
         // and roll is the angle between the hypotenuse and the vertical side
         return z_translation_ * cos(roll) * cos(pitch);
     }
-
-
 
     float low_pass_filter(float z_current)
     {
@@ -103,4 +97,3 @@ int main(int argc, char **argv)
     rclcpp::shutdown();
     return 0;
 }
-
