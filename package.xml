@@ -14,12 +14,13 @@
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
+  <depend>tf_geometry_msgs</depend>
   <depend>camera_info_manager</depend>
-  <depend>yaml</depend>
 
+  <depend>yaml</depend>
+  <depend>OpenCV</depend>
   <depend>cv_bridge</depend>
   <depend>image_transport</depend>
-  <depend>OpenCV</depend>
 
   <exec_depend>rviz2</exec_depend>
   <exec_depend>xacro</exec_depend>

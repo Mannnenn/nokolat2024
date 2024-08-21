@@ -8,23 +8,20 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(OpenCV)
+find_package(yaml-cpp REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(image_transport REQUIRED)
+
 find_package(rclcpp REQUIRED)
 find_package(tf2_ros REQUIRED)
-find_package(sensor_msgs REQUIRED)
-find_package(geometry_msgs REQUIRED)
 find_package(urdf REQUIRED)
-find_package(imutof REQUIRED)
-find_package(yaml-cpp REQUIRED)
-
-find_package(cv_bridge REQUIRED)
-find_package(image_transport)
-find_package(geometry_msgs)
-find_package(OpenCV)
-find_package(nav_msgs)
 find_package(camera_info_manager REQUIRED)
-
-
-find_package(OpenMP REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 
 # install launch files
 install(
@@ -52,14 +49,11 @@ install(
 find_package(rosidl_default_generators REQUIRED)
 
 
-
-add_executable(imu2tf src/imu2tf.cpp)
-ament_target_dependencies(imu2tf rclcpp tf2_ros sensor_msgs geometry_msgs std_msgs)
-
-
+add_executable(tf_publisher src/tf_publisher.cpp)
+ament_target_dependencies(tf_publisher rclcpp tf2_ros geometry_msgs tf2_geometry_msgs)
 
 add_executable(image_diff_extraction src/image_diff_extraction.cpp)
-ament_target_dependencies(image_diff_extraction rclcpp sensor_msgs cv_bridge OpenCV OpenMP)
+ament_target_dependencies(image_diff_extraction rclcpp sensor_msgs cv_bridge OpenCV)
 
 
 add_executable(depth_estimation src/depth_estimation.cpp)
@@ -80,7 +74,7 @@ ament_target_dependencies(cog_corrected rclcpp sensor_msgs geometry_msgs image_t
 target_link_libraries(cog_corrected yaml-cpp)
 
 install(TARGETS
-  imu2tf
+  tf_publisher
   image_diff_extraction
   depth_estimation
   position_estimation

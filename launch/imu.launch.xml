@@ -1,5 +1,0 @@
-<launch>
-  <node pkg="nokolat2024" exec="imu2tf" name="imu_to_tf_node" output="screen" />
-  <node pkg="rviz2" exec="rviz2" name="rviz"
-    args="-d $(find-pkg-share nokolat2024)/rviz/rvizmodel.rviz" output="screen" />
-</launch>
