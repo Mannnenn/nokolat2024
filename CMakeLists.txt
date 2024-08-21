@@ -57,14 +57,10 @@ add_executable(imu2tf src/imu2tf.cpp)
 ament_target_dependencies(imu2tf rclcpp tf2_ros sensor_msgs geometry_msgs std_msgs)
 
 
-add_executable(infra2bivaluation src/infra2bivaluation.cpp)
-ament_target_dependencies(infra2bivaluation rclcpp sensor_msgs cv_bridge image_transport OpenCV geometry_msgs)
 
 add_executable(image_diff_extraction src/image_diff_extraction.cpp)
 ament_target_dependencies(image_diff_extraction rclcpp sensor_msgs cv_bridge OpenCV OpenMP)
 
-add_executable(stereo_maching src/stereo_maching.cpp)
-ament_target_dependencies(stereo_maching rclcpp image_transport sensor_msgs cv_bridge OpenCV)
 
 add_executable(depth_estimation src/depth_estimation.cpp)
 ament_target_dependencies(depth_estimation rclcpp geometry_msgs yaml-cpp)
@@ -78,9 +74,6 @@ target_link_libraries(position_estimation yaml-cpp)
 add_executable(point2pointStamped src/point2pointStamped.cpp)
 ament_target_dependencies(point2pointStamped rclcpp geometry_msgs nav_msgs)
 
-add_executable(camera_info_publisher src/camera_info_publisher.cpp)
-ament_target_dependencies(camera_info_publisher rclcpp sensor_msgs camera_info_manager yaml-cpp)
-target_link_libraries(camera_info_publisher yaml-cpp)
 
 add_executable(cog_corrected src/cog_corrected.cpp)
 ament_target_dependencies(cog_corrected rclcpp sensor_msgs geometry_msgs image_transport cv_bridge OpenCV yaml-cpp)
@@ -88,13 +81,10 @@ target_link_libraries(cog_corrected yaml-cpp)
 
 install(TARGETS
   imu2tf
-  infra2bivaluation
   image_diff_extraction
-  stereo_maching
   depth_estimation
   position_estimation
   point2pointStamped
-  camera_info_publisher
   cog_corrected
   DESTINATION lib/${PROJECT_NAME})
 
