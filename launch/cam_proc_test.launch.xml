@@ -1,16 +1,16 @@
 <launch>
 
     <!-- Define arguments for common topic names -->
-    <arg name="left_image_rect_raw" default="/infra_cam/left/infra1/image_rect_raw" />
-    <arg name="left_image_diff" default="/infra_cam/left/infra1/image_diff" />
-    <arg name="left_image_diff_bivaluation" default="/infra_cam/left/infra1/image_diff_bivaluation" />
-    <arg name="left_cog" default="/infra_cam/left/infra1/cog" />
+    <arg name="left_image_rect_raw" default="/infra_cam/left/image_rect_raw" />
+    <arg name="left_image_diff" default="/infra_cam/left/image_diff" />
+    <arg name="left_image_diff_bivaluation" default="/infra_cam/left/image_diff_bivaluation" />
+    <arg name="left_cog" default="/infra_cam/left/cog" />
 
-    <arg name="right_image_rect_raw" default="/infra_cam/right/infra2/image_rect_raw" />
-    <arg name="right_image_diff" default="/infra_cam/right/infra2/image_diff" />
+    <arg name="right_image_rect_raw" default="/infra_cam/right/image_rect_raw" />
+    <arg name="right_image_diff" default="/infra_cam/right/image_diff" />
     <arg name="right_image_diff_bivaluation"
-        default="/infra_cam/right/infra2/image_diff_bivaluation" />
-    <arg name="right_cog" default="/infra_cam/right/infra2/cog" />
+        default="/infra_cam/right/image_diff_bivaluation" />
+    <arg name="right_cog" default="/infra_cam/right/cog" />
 
     <arg name="depth" default="/infra_cam/depth" />
     <arg name="position" default="/infra_cam/position" />
