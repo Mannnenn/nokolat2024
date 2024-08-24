@@ -1,0 +1,8 @@
+<launch>
+    <node pkg="joy" exec="joy_node" name="joy_node" output="screen" />
+
+    <node pkg="nokolat2024" exec="pub_command" name="pub_command" output="screen" />
+    <node pkg="micro_ros_agent" exec="micro_ros_agent" name="micro_ros_agent" output="screen"
+        args="udp4 --port 8888" />
+
+</launch>
