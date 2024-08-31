@@ -20,9 +20,11 @@ find_package(camera_info_manager REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(message_filters REQUIRED)
+find_package(nokolat2024 REQUIRED)
 
 # install launch files
 install(
@@ -49,6 +51,10 @@ install(
 
 find_package(rosidl_default_generators REQUIRED)
 
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/Command.msg"
+  DEPENDENCIES std_msgs  # std_msgsを追加
+)
 
 add_executable(tf_publisher src/tf_publisher.cpp)
 ament_target_dependencies(tf_publisher rclcpp tf2_ros geometry_msgs tf2_geometry_msgs)
@@ -80,11 +86,11 @@ ament_target_dependencies(pub_command rclcpp sensor_msgs std_msgs)
 add_executable(image_sync_node src/timestamp_sync.cpp)
 ament_target_dependencies(image_sync_node rclcpp sensor_msgs message_filters)
 
-add_executable(init_pose src/init_pose.cpp)
-ament_target_dependencies(init_pose   rclcpp sensor_msgs geometry_msgs tf2_ros)
-
 add_executable(projection_xy src/projection_xy.cpp)
 ament_target_dependencies(projection_xy   rclcpp  geometry_msgs tf2_ros)
+
+add_executable(recive_command src/recive_command.cpp)
+ament_target_dependencies(recive_command rclcpp  geometry_msgs nokolat2024)
 
 install(TARGETS
   tf_publisher
@@ -95,8 +101,8 @@ install(TARGETS
   cog_corrected
   pub_command
   image_sync_node
-  init_pose
   projection_xy
+  recive_command
   DESTINATION lib/${PROJECT_NAME})
 
 
