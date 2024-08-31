@@ -80,6 +80,12 @@ ament_target_dependencies(pub_command rclcpp sensor_msgs std_msgs)
 add_executable(image_sync_node src/timestamp_sync.cpp)
 ament_target_dependencies(image_sync_node rclcpp sensor_msgs message_filters)
 
+add_executable(init_pose src/init_pose.cpp)
+ament_target_dependencies(init_pose   rclcpp sensor_msgs geometry_msgs tf2_ros)
+
+add_executable(projection_xy src/projection_xy.cpp)
+ament_target_dependencies(projection_xy   rclcpp  geometry_msgs tf2_ros)
+
 install(TARGETS
   tf_publisher
   image_diff_extraction
@@ -89,6 +95,8 @@ install(TARGETS
   cog_corrected
   pub_command
   image_sync_node
+  init_pose
+  projection_xy
   DESTINATION lib/${PROJECT_NAME})
 
 
