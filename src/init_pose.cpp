@@ -3,7 +3,7 @@
 #include <memory>
 #include <string>
 #include <rclcpp/rclcpp.hpp>
-#include <sensor_msgs/msg/imu.hpp>
+#include "geometry_msgs/msg/quaternion.hpp"
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h>
@@ -20,7 +20,7 @@ public:
         // QoS設定を作成
         rclcpp::QoS qos(100); // 10 is the history depth
         qos.reliability(rclcpp::ReliabilityPolicy::BestEffort);
-        imu_subscriber_ = this->create_subscription<sensor_msgs::msg::Imu>(
+        imu_subscriber_ = this->create_subscription<geometry_msgs::msg::Quaternion>(
             "/imu", qos, std::bind(&IMUAlignmentNode::imuCallback, this, std::placeholders::_1));
 
         static_tf_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
@@ -28,7 +28,7 @@ public:
     }
 
 private:
-    void imuCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
+    void imuCallback(const geometry_msgs::msg::Quaternion::SharedPtr msg)
     {
         if (!initial_alignment_done_)
         {
@@ -48,10 +48,10 @@ private:
             {
                 // 10秒間IMUの姿勢データを蓄積する
                 tf2::Quaternion orientation;
-                orientation.setX(msg->orientation.x);
-                orientation.setY(msg->orientation.y);
-                orientation.setZ(msg->orientation.z);
-                orientation.setW(msg->orientation.w);
+                orientation.setX(msg->x);
+                orientation.setY(msg->y);
+                orientation.setZ(msg->z);
+                orientation.setW(msg->w);
 
                 accumulated_orientation_ += orientation;
                 sample_count_++;
@@ -100,10 +100,10 @@ private:
             transform_stamped_imu.header.stamp = this->now();
             transform_stamped_imu.header.frame_id = "imu_link";
             transform_stamped_imu.child_frame_id = "base_link";
-            transform_stamped_imu.transform.rotation.x = msg->orientation.x;
-            transform_stamped_imu.transform.rotation.y = msg->orientation.y;
-            transform_stamped_imu.transform.rotation.z = msg->orientation.z;
-            transform_stamped_imu.transform.rotation.w = msg->orientation.w;
+            transform_stamped_imu.transform.rotation.x = msg->x;
+            transform_stamped_imu.transform.rotation.y = msg->y;
+            transform_stamped_imu.transform.rotation.z = msg->z;
+            transform_stamped_imu.transform.rotation.w = msg->w;
 
             transform_stamped_imu.transform.translation.x = 0.0;
             transform_stamped_imu.transform.translation.y = 0.0;
@@ -113,7 +113,7 @@ private:
         }
     }
 
-    rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_subscriber_;
+    rclcpp::Subscription<geometry_msgs::msg::Quaternion>::SharedPtr imu_subscriber_;
     std::shared_ptr<tf2_ros::StaticTransformBroadcaster> static_tf_broadcaster_;
     std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
