@@ -22,6 +22,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
+find_package(message_filters REQUIRED)
 
 # install launch files
 install(
@@ -55,7 +56,6 @@ ament_target_dependencies(tf_publisher rclcpp tf2_ros geometry_msgs tf2_geometry
 add_executable(image_diff_extraction src/image_diff_extraction.cpp)
 ament_target_dependencies(image_diff_extraction rclcpp sensor_msgs cv_bridge OpenCV)
 
-
 add_executable(depth_estimation src/depth_estimation.cpp)
 ament_target_dependencies(depth_estimation rclcpp geometry_msgs yaml-cpp)
 target_link_libraries(depth_estimation yaml-cpp)
@@ -77,6 +77,8 @@ target_link_libraries(cog_corrected yaml-cpp)
 add_executable(pub_command src/pub_command.cpp)
 ament_target_dependencies(pub_command rclcpp sensor_msgs std_msgs)
 
+add_executable(image_sync_node src/timestamp_sync.cpp)
+ament_target_dependencies(image_sync_node rclcpp sensor_msgs message_filters)
 
 install(TARGETS
   tf_publisher
@@ -86,6 +88,7 @@ install(TARGETS
   point2pointStamped
   cog_corrected
   pub_command
+  image_sync_node
   DESTINATION lib/${PROJECT_NAME})
 
 
