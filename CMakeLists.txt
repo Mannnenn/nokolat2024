@@ -53,6 +53,7 @@ find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Command.msg"
+  "msg/Rpy.msg"
   DEPENDENCIES std_msgs  # std_msgsを追加
 )
 
@@ -92,6 +93,9 @@ ament_target_dependencies(projection_xy   rclcpp  geometry_msgs tf2_ros)
 add_executable(recive_command src/recive_command.cpp)
 ament_target_dependencies(recive_command rclcpp  geometry_msgs nokolat2024)
 
+add_executable(tf2rpy src/tf2rpy.cpp)
+ament_target_dependencies(tf2rpy rclcpp  geometry_msgs tf2_ros nokolat2024)
+
 install(TARGETS
   tf_publisher
   image_diff_extraction
@@ -103,6 +107,7 @@ install(TARGETS
   image_sync_node
   projection_xy
   recive_command
+  tf2rpy
   DESTINATION lib/${PROJECT_NAME})
 
 
