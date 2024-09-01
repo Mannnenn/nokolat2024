@@ -121,19 +121,37 @@ private:
         }
         else
         {
-            // IMUの姿勢をbase_linkに変換して配信(最初の数秒をのぞいて)
-            orientation_ = msg->orientation;
 
-            // ToFセンサのz座標を取得し、姿勢による分を補正する
+            // ToFセンサの値を取得し、姿勢による分を補正する
             double roll, pitch, yaw;
             double raw_z = msg->position.z;
-            tf2::Quaternion q(orientation_.x, orientation_.y, orientation_.z, orientation_.w);
+            tf2::Quaternion q(msg->orientation.x, msg->orientation.y, msg->orientation.z, msg->orientation.w);
             tf2::Matrix3x3(q).getRPY(roll, pitch, yaw);
 
             double vertical_distance = calculate_vertical_distance(raw_z, roll, pitch);
             position_vector_.setZ(low_pass_filter(vertical_distance));
 
             // printf("z_translation_: %f\n", z_translation_);
+
+            // クォータニオンの差が大きい場合は外れ値として扱う
+            if (!is_first_tf_pub_message)
+            {
+                double diff = quaternion_difference(msg->orientation, previous_orientation);
+                if (diff > QUATERNION_DIFF_THRESHOLD)
+                {
+                    // しきい値よりも、現在のフレームと前のフレームとの差の二乗和が大きい場合は外れ値として無視する
+                    RCLCPP_WARN(this->get_logger(), "Detected outlier quaternion, ignoring this IMU message.");
+                    return;
+                }
+            }
+
+            // パブリッシュする値と比較に使う値を更新
+            orientation_ = msg->orientation;
+            previous_orientation = msg->orientation;
+            is_first_tf_pub_message = false;
+
+            // 前のクォータニオンの値を更新
+            previous_orientation = msg->orientation;
 
             geometry_msgs::msg::TransformStamped tf;
             tf.header.stamp = this->now();
@@ -142,10 +160,10 @@ private:
             tf.transform.translation.x = position_vector_.getX();
             tf.transform.translation.y = position_vector_.getY();
             tf.transform.translation.z = position_vector_.getZ();
-            tf.transform.rotation.x = msg->orientation.x;
-            tf.transform.rotation.y = msg->orientation.y;
-            tf.transform.rotation.z = msg->orientation.z;
-            tf.transform.rotation.w = msg->orientation.w;
+            tf.transform.rotation.x = orientation_.x;
+            tf.transform.rotation.y = orientation_.y;
+            tf.transform.rotation.z = orientation_.z;
+            tf.transform.rotation.w = orientation_.w;
             tf_broadcaster_->sendTransform(tf);
         }
     }
@@ -181,6 +199,15 @@ private:
         return z_filtered;
     }
 
+    double quaternion_difference(const geometry_msgs::msg::Quaternion &q1, const geometry_msgs::msg::Quaternion &q2)
+    {
+        return std::sqrt(
+            std::pow(q1.x - q2.x, 2) +
+            std::pow(q1.y - q2.y, 2) +
+            std::pow(q1.z - q2.z, 2) +
+            std::pow(q1.w - q2.w, 2));
+    }
+
     double z_filtered_prev_ = 0.0;
 
     rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr imu_subscriber_;
@@ -198,6 +225,15 @@ private:
     tf2::Quaternion accumulated_orientation_;
     int sample_count_ = 0;
     bool first_callback = true;
+
+    // 最初のメッセージは外れ値として扱わない
+    bool is_first_tf_pub_message = true;
+
+    // 外れ値を検出するための閾値（例として、クォータニオンの差が0.1を超える場合を外れ値とする）
+    const double QUATERNION_DIFF_THRESHOLD = 0.1;
+
+    // 前のクォータニオンの値を保持する変数
+    geometry_msgs::msg::Quaternion previous_orientation;
 };
 
 int main(int argc, char **argv)
