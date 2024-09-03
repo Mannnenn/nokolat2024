@@ -1,6 +1,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "geometry_msgs/msg/pose.hpp"
-#include "nokolat2024/msg/command.hpp"
+#include "nokolat2024_msg/msg/command.hpp"
+#include <unordered_map>
 #include "std_msgs/msg/string.hpp"
 
 class PoseSubscriber : public rclcpp::Node
@@ -13,14 +14,14 @@ public:
         qos.reliability(rclcpp::ReliabilityPolicy::BestEffort);
         subscription_ = this->create_subscription<geometry_msgs::msg::Pose>(
             "controller", qos, std::bind(&PoseSubscriber::pose_callback, this, std::placeholders::_1));
-        publisher_custom_ = this->create_publisher<nokolat2024::msg::Command>("command_receive", 10);
+        publisher_custom_ = this->create_publisher<nokolat2024_msg::msg::Command>("command_receive", 10);
         publisher_mode_ = this->create_publisher<std_msgs::msg::String>("mode", 10);
     }
 
 private:
     void pose_callback(const geometry_msgs::msg::Pose::SharedPtr msg)
     {
-        nokolat2024::msg::Command command_receive_msg;
+        nokolat2024_msg::msg::Command command_receive_msg;
         command_receive_msg.throttle = msg->position.x;
         command_receive_msg.elevator = msg->position.y;
         command_receive_msg.rudder = msg->position.z;
@@ -33,25 +34,10 @@ private:
 
         auto mode_msg = std_msgs::msg::String();
 
-        switch (static_cast<int16_t>(msg->orientation.w))
+        auto it = control_mode_map.find(static_cast<int16_t>(msg->orientation.w));
+        if (it != control_mode_map.end())
         {
-        case CONTROL_MODE::MANUAL:
-            mode_msg.data = "MANUAL";
-            break;
-        case CONTROL_MODE::AUTO_TURNING:
-            mode_msg.data = "AUTO_TURNING";
-            break;
-        case CONTROL_MODE::AUTO_RISE_TURNING:
-            mode_msg.data = "AUTO_RISE_TURNING";
-            break;
-        case CONTROL_MODE::AUTO_LANDING:
-            mode_msg.data = "AUTO_LANDING";
-            break;
-        case CONTROL_MODE::AUTO_EIGHT:
-            mode_msg.data = "AUTO_EIGHT";
-            break;
-        default:
-            break;
+            mode_msg.data = it->second;
         }
 
         publisher_custom_->publish(command_receive_msg);
@@ -70,8 +56,15 @@ private:
         AUTO_EIGHT = 4,
     };
 
+    const std::unordered_map<int16_t, std::string> control_mode_map = {
+        {CONTROL_MODE::MANUAL, "MANUAL"},
+        {CONTROL_MODE::AUTO_TURNING, "AUTO_TURNING"},
+        {CONTROL_MODE::AUTO_RISE_TURNING, "AUTO_RISE_TURNING"},
+        {CONTROL_MODE::AUTO_LANDING, "AUTO_LANDING"},
+        {CONTROL_MODE::AUTO_EIGHT, "AUTO_EIGHT"}};
+
     rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr subscription_;
-    rclcpp::Publisher<nokolat2024::msg::Command>::SharedPtr publisher_custom_;
+    rclcpp::Publisher<nokolat2024_msg::msg::Command>::SharedPtr publisher_custom_;
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_mode_;
 };
 

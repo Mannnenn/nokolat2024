@@ -24,7 +24,7 @@ find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(message_filters REQUIRED)
-find_package(nokolat2024 REQUIRED)
+find_package(nokolat2024_msg REQUIRED)
 
 # install launch files
 install(
@@ -51,11 +51,6 @@ install(
 
 find_package(rosidl_default_generators REQUIRED)
 
-rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/Command.msg"
-  "msg/Rpy.msg"
-  DEPENDENCIES std_msgs  # std_msgsを追加
-)
 
 add_executable(tf_publisher src/tf_publisher.cpp)
 ament_target_dependencies(tf_publisher rclcpp tf2_ros geometry_msgs tf2_geometry_msgs)
@@ -91,10 +86,10 @@ add_executable(projection_xy src/projection_xy.cpp)
 ament_target_dependencies(projection_xy   rclcpp  geometry_msgs tf2_ros)
 
 add_executable(recive_command src/recive_command.cpp)
-ament_target_dependencies(recive_command rclcpp  geometry_msgs nokolat2024)
+ament_target_dependencies(recive_command rclcpp  geometry_msgs nokolat2024_msg)
 
 add_executable(tf2rpy src/tf2rpy.cpp)
-ament_target_dependencies(tf2rpy rclcpp  geometry_msgs tf2_ros nokolat2024)
+ament_target_dependencies(tf2rpy rclcpp  geometry_msgs tf2_ros nokolat2024_msg)
 
 install(TARGETS
   tf_publisher

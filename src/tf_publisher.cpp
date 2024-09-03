@@ -140,8 +140,16 @@ private:
                 if (diff > QUATERNION_DIFF_THRESHOLD)
                 {
                     // しきい値よりも、現在のフレームと前のフレームとの差の二乗和が大きい場合は外れ値として無視する
-                    RCLCPP_WARN(this->get_logger(), "Detected outlier quaternion, ignoring this IMU message.");
-                    return;
+                    // RCLCPP_WARN(this->get_logger(), "Detected outlier quaternion, ignoring this IMU message.");
+                    if (ignore > 30)
+                    {
+                        ignore = 0;
+                    }
+                    else
+                    {
+                        ignore++;
+                        return;
+                    }
                 }
             }
 
@@ -193,7 +201,7 @@ private:
 
     float low_pass_filter(float z_current)
     {
-        float alpha = 0.5; // 適切な値に調整する
+        float alpha = 0.2; // 適切な値に調整する
         float z_filtered = z_filtered_prev_ * (1 - alpha) + z_current * alpha;
         z_filtered_prev_ = z_filtered; // 更新された値を保存
         return z_filtered;
@@ -229,8 +237,11 @@ private:
     // 最初のメッセージは外れ値として扱わない
     bool is_first_tf_pub_message = true;
 
-    // 外れ値を検出するための閾値（例として、クォータニオンの差が0.1を超える場合を外れ値とする）
+    // 外れ値を検出するための閾値
     const double QUATERNION_DIFF_THRESHOLD = 0.1;
+
+    // 外れ値除去された回数をカウントする
+    int ignore = 0;
 
     // 前のクォータニオンの値を保持する変数
     geometry_msgs::msg::Quaternion previous_orientation;

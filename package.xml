@@ -25,6 +25,8 @@
   <depend>cv_bridge</depend>
   <depend>image_transport</depend>
 
+  <depend>nokolat2024_msg</depend>
+
   <exec_depend>rviz2</exec_depend>
   <exec_depend>xacro</exec_depend>
 

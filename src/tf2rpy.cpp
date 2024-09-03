@@ -1,7 +1,7 @@
 #include <memory>
 #include <rclcpp/rclcpp.hpp>
 
-#include "nokolat2024/msg/rpy.hpp"
+#include "nokolat2024_msg/msg/rpy.hpp"
 
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
@@ -24,7 +24,7 @@ public:
         {
             try
             {
-                tf_buffer_->lookupTransform("base_link", "base_link_projected", tf2::TimePointZero);
+                tf_buffer_->lookupTransform("base_link_projected", "base_link", tf2::TimePointZero);
                 RCLCPP_INFO(this->get_logger(), "base_link is now available.");
                 break;
             }
@@ -39,7 +39,7 @@ public:
             std::chrono::milliseconds(10),
             std::bind(&Tf2RpyNode::timer_callback, this));
 
-        rpy_pub_ = this->create_publisher<nokolat2024::msg::Rpy>("roll", 10);
+        rpy_pub_ = this->create_publisher<nokolat2024_msg::msg::Rpy>("roll", 10);
     }
 
 private:
@@ -67,7 +67,7 @@ private:
         double roll, pitch, yaw;
         m.getRPY(roll, pitch, yaw);
 
-        nokolat2024::msg::Rpy roll_msg;
+        nokolat2024_msg::msg::Rpy roll_msg;
 
         roll_msg.roll = roll;
         roll_msg.pitch = pitch;
@@ -78,7 +78,7 @@ private:
     }
 
     rclcpp::TimerBase::SharedPtr timer_;
-    rclcpp::Publisher<nokolat2024::msg::Rpy>::SharedPtr rpy_pub_;
+    rclcpp::Publisher<nokolat2024_msg::msg::Rpy>::SharedPtr rpy_pub_;
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 };
