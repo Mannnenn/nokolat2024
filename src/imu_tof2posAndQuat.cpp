@@ -1,5 +1,7 @@
 #include "rclcpp/rclcpp.hpp"
 
+#include <deque>
+
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 
@@ -53,12 +55,19 @@ private:
         tf2::Matrix3x3(q).getRPY(roll, pitch, yaw);
 
         double vertical_distance = calculate_vertical_distance(raw_z, roll, pitch);
-        z_translation_ = low_pass_filter(vertical_distance);
+
+        // ローパスフィルタをかける
+        z_translation_history_.push_back(vertical_distance);
+        if (z_translation_history_.size() > window_size_)
+        {
+            z_translation_history_.pop_front();
+        }
+        double z_filtered = std::accumulate(z_translation_history_.begin(), z_translation_history_.end(), 0.0) / z_translation_history_.size();
 
         geometry_msgs::msg::PointStamped pose;
         pose.header.frame_id = "base_link";
         pose.header.stamp = this->now();
-        pose.point.z = msg->position.z;
+        pose.point.z = z_filtered;
         publisher_point_stamped_->publish(pose);
     }
 
@@ -79,6 +88,9 @@ private:
 
     double z_filtered_prev_ = 0.0;
     double z_translation_;
+
+    std::deque<double> z_translation_history_;
+    long unsigned int window_size_ = 10;
 
     rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr imu_subscriber_;
     rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr publisher_point_stamped_;
