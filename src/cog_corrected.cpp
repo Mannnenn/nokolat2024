@@ -152,12 +152,9 @@ private:
 
     void process_and_publish_cog(const cv::Mat &image, rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr publisher)
     {
-        // 2値化
-        cv::Mat binary_image;
-        cv::threshold(image, binary_image, 80, 255, cv::THRESH_BINARY);
 
         // 重心の計算
-        cv::Moments m = cv::moments(binary_image, true);
+        cv::Moments m = cv::moments(image, true);
         float cog_x = m.m10 / m.m00;
         float cog_y = m.m01 / m.m00;
 

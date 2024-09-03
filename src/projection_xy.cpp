@@ -44,7 +44,7 @@ private:
         geometry_msgs::msg::TransformStamped transform_stamped;
         try
         {
-            transform_stamped = tf_buffer_->lookupTransform("imu_link", "base_link", tf2::TimePointZero);
+            transform_stamped = tf_buffer_->lookupTransform("imu_base_link", "base_link", tf2::TimePointZero);
         }
         catch (tf2::TransformException &ex)
         {
@@ -62,7 +62,7 @@ private:
         tf2::Quaternion projected_xy_plane = projectToXYPlane(q);
         geometry_msgs::msg::TransformStamped transform_stamped_base;
         transform_stamped_base.header.stamp = this->now();
-        transform_stamped_base.header.frame_id = "imu_link";
+        transform_stamped_base.header.frame_id = "imu_base_link";
         transform_stamped_base.child_frame_id = "base_link_projected";
         transform_stamped_base.transform.rotation.x = projected_xy_plane.x();
         transform_stamped_base.transform.rotation.y = projected_xy_plane.y();

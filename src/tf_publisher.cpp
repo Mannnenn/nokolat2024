@@ -47,9 +47,6 @@ public:
         tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
 
         // 0,0で初期化してカメラの位置推定がなくても動作するようにする
-
-        position_vector_.setX(0.0);
-        position_vector_.setY(0.0);
     }
 
 private:
@@ -102,7 +99,7 @@ private:
                 geometry_msgs::msg::TransformStamped transform_stamped;
                 transform_stamped.header.stamp = this->now();
                 transform_stamped.header.frame_id = "map";
-                transform_stamped.child_frame_id = "imu_link";
+                transform_stamped.child_frame_id = "imu_base_link";
                 transform_stamped.transform.rotation.x = map_to_imu_rotation.x();
                 transform_stamped.transform.rotation.y = map_to_imu_rotation.y();
                 transform_stamped.transform.rotation.z = map_to_imu_rotation.z();
@@ -141,7 +138,7 @@ private:
                 {
                     // しきい値よりも、現在のフレームと前のフレームとの差の二乗和が大きい場合は外れ値として無視する
                     // RCLCPP_WARN(this->get_logger(), "Detected outlier quaternion, ignoring this IMU message.");
-                    if (ignore > 30)
+                    if (ignore > 100)
                     {
                         ignore = 0;
                     }
@@ -163,7 +160,7 @@ private:
 
             geometry_msgs::msg::TransformStamped tf;
             tf.header.stamp = this->now();
-            tf.header.frame_id = "imu_link";
+            tf.header.frame_id = "imu_base_link";
             tf.child_frame_id = "base_link";
             tf.transform.translation.x = position_vector_.getX();
             tf.transform.translation.y = position_vector_.getY();
