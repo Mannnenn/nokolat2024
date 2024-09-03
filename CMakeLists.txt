@@ -25,6 +25,10 @@ find_package(geometry_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(message_filters REQUIRED)
 find_package(nokolat2024_msg REQUIRED)
+find_package(Eigen3 REQUIRED)
+
+
+include_directories(${EIGEN3_INCLUDE_DIR})
 
 # install launch files
 install(
@@ -91,6 +95,10 @@ ament_target_dependencies(recive_command rclcpp  geometry_msgs nokolat2024_msg)
 add_executable(tf2rpy src/tf2rpy.cpp)
 ament_target_dependencies(tf2rpy rclcpp  geometry_msgs tf2_ros nokolat2024_msg)
 
+add_executable(imu_tof2posAndQuat src/imu_tof2posAndQuat.cpp)
+ament_target_dependencies(imu_tof2posAndQuat rclcpp  geometry_msgs tf2_ros)
+
+
 install(TARGETS
   tf_publisher
   image_diff_extraction
@@ -103,6 +111,7 @@ install(TARGETS
   projection_xy
   recive_command
   tf2rpy
+  imu_tof2posAndQuat
   DESTINATION lib/${PROJECT_NAME})
 
 

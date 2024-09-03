@@ -1,5 +1,10 @@
 #include <rclcpp/rclcpp.hpp>
+
 #include <iostream>
+#include <deque>
+
+#include <Eigen/Dense>
+
 #include <std_msgs/msg/float32.hpp>
 #include <geometry_msgs/msg/point.hpp>
 #include <yaml-cpp/yaml.h>
@@ -7,7 +12,7 @@
 class positionEstimateNode : public rclcpp::Node
 {
 public:
-    positionEstimateNode() : Node("stereo_matching_node")
+    positionEstimateNode() : Node("stereo_matching_node"), last_time_(this->now())
     {
         // パラメータの宣言
         // パラメータの宣言
@@ -71,6 +76,15 @@ public:
 
         center_x = camera_info_right["K"][2].as<double>();
         center_y = camera_info_right["K"][5].as<double>();
+
+        // カルマンフィルタの初期化
+        x_ = Eigen::VectorXd::Zero(6);                          // 状態ベクトル [x, y, z, vx, vy, vz]
+        P_ = Eigen::MatrixXd::Identity(6, 6);                   // 共分散行列
+        Q_ = Eigen::MatrixXd::Identity(6, 6) * 0.1;             // プロセスノイズ
+        R_ = Eigen::MatrixXd::Identity(3, 3) * 1;               // 観測ノイズ
+        A_ = Eigen::MatrixXd::Identity(6, 6);                   // 状態遷移行列
+        H_ = Eigen::MatrixXd::Zero(3, 6);                       // 観測モデル
+        H_.block<3, 3>(0, 0) = Eigen::MatrixXd::Identity(3, 3); // 位置の部分だけを観測
     }
 
 private:
@@ -98,14 +112,38 @@ private:
             return;
         }
 
-        float x = (position_left_.x + position_right_.x) / 2;
-        float y = (position_left_.y + position_right_.y) / 2;
+        float mean_x = (position_left_.x + position_right_.x) / 2;
+        float mean_y = (position_left_.y + position_right_.y) / 2;
 
         // calc position,In Realsense D455, the depth is the distance from the camera to the object.
 
-        position_.y = -(x - center_x) * depth_ / focal_length; // left as y axis.
-        position_.z = (y - center_y) * depth_ / focal_length;  // up as z axis.
-        position_.x = depth_;                                  // forward as x axis.
+        float raw_y = (mean_x - center_x) * depth_ / focal_length;
+        float raw_z = (mean_y - center_y) * depth_ / focal_length;
+        float raw_x = depth_;
+
+        float dt = (this->now() - last_time_).seconds();
+        // 状態遷移行列 A に時間差分を反映
+        A_(0, 3) = dt;
+        A_(1, 4) = dt;
+        A_(2, 5) = dt;
+
+        // ステレオカメラからの観測値を取得 (ここでは例として単一のポイントを使用)
+        Eigen::VectorXd z(3);
+        z << raw_x, raw_y, raw_z;
+
+        // カルマンフィルタ予測ステップ
+        x_ = A_ * x_;
+        P_ = A_ * P_ * A_.transpose() + Q_;
+
+        // カルマンフィルタ更新ステップ
+        Eigen::MatrixXd S = H_ * P_ * H_.transpose() + R_;
+        Eigen::MatrixXd K = P_ * H_.transpose() * S.inverse();
+        x_ = x_ + K * (z - H_ * x_);
+        P_ = (Eigen::MatrixXd::Identity(6, 6) - K * H_) * P_;
+
+        position_.x = x_(0);
+        position_.y = x_(1);
+        position_.z = x_(2);
 
         // printf("x: %f, y: %f\n", position_.x, position_.z);
 
@@ -120,15 +158,23 @@ private:
     geometry_msgs::msg::Point position_left_;
     geometry_msgs::msg::Point position_right_;
 
+    YAML::Node camera_info_right;
+
+    geometry_msgs::msg::Point position_;
+
     float focal_length;
     float center_x;
     float center_y;
 
     float depth_;
 
-    YAML::Node camera_info_right;
-
-    geometry_msgs::msg::Point position_;
+    rclcpp::Time last_time_;
+    Eigen::VectorXd x_; // 状態ベクトル [x, y, z, vx, vy, vz]
+    Eigen::MatrixXd P_; // 共分散行列
+    Eigen::MatrixXd Q_; // プロセスノイズ
+    Eigen::MatrixXd R_; // 観測ノイズ
+    Eigen::MatrixXd A_; // 状態遷移行列
+    Eigen::MatrixXd H_; // 観測モデル
 };
 
 int main(int argc, char *argv[])

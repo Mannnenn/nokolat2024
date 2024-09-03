@@ -28,20 +28,25 @@ public:
     {
         // パラメータの宣言
         this->declare_parameter<std::string>("input_position_topic_name", "/position_stamped");
-        this->declare_parameter<std::string>("input_imu_tof_topic_name", "/imu_tof");
+        this->declare_parameter<std::string>("input_altitude_stamped_topic_name", "/altitude_stamped");
+        this->declare_parameter<std::string>("input_quaternion_topic_name", "/quaternion");
 
         // パラメータの取得
         std::string input_position_topic_name;
         this->get_parameter("input_position_topic_name", input_position_topic_name);
-        std::string input_imu_tof_topic_name;
-        this->get_parameter("input_imu_tof_topic_name", input_imu_tof_topic_name);
+        std::string input_altitude_stamped_topic_name;
+        this->get_parameter("input_altitude_stamped_topic_name", input_altitude_stamped_topic_name);
+        std::string input_quaternion_topic_name;
+        this->get_parameter("input_quaternion_topic_name", input_quaternion_topic_name);
 
         rclcpp::QoS qos(100); // 10 is the history depth
         qos.reliability(rclcpp::ReliabilityPolicy::BestEffort);
-        imu_subscriber_ = this->create_subscription<geometry_msgs::msg::Pose>(
-            input_imu_tof_topic_name, qos, std::bind(&ImuToTfNode::pose_callback, this, std::placeholders::_1));
         point_stamped_subscriber_ = this->create_subscription<geometry_msgs::msg::PointStamped>(
             input_position_topic_name, qos, std::bind(&ImuToTfNode::point_stamped_callback, this, std::placeholders::_1));
+        altitude_stamped_subscriber_ = this->create_subscription<geometry_msgs::msg::PointStamped>(
+            input_altitude_stamped_topic_name, qos, std::bind(&ImuToTfNode::altitude_stamped_callback, this, std::placeholders::_1));
+        quaternion_subscriber_ = this->create_subscription<geometry_msgs::msg::Quaternion>(
+            input_quaternion_topic_name, qos, std::bind(&ImuToTfNode::pose_callback, this, std::placeholders::_1));
 
         static_tf_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
         tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
@@ -50,7 +55,23 @@ public:
     }
 
 private:
-    void pose_callback(const geometry_msgs::msg::Pose::SharedPtr msg)
+    void point_stamped_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg)
+    {
+
+        geometry_msgs::msg::PointStamped transformed_point;
+        try
+        {
+            tf_buffer_.transform(*msg, transformed_point, "map");
+            position_vector_.setX(transformed_point.point.x);
+            position_vector_.setY(transformed_point.point.y);
+        }
+        catch (tf2::TransformException &ex)
+        {
+            RCLCPP_WARN(this->get_logger(), "Could not transform point: %s", ex.what());
+        }
+    }
+
+    void pose_callback(const geometry_msgs::msg::Quaternion::SharedPtr msg)
     {
         if (!initial_alignment_done_)
         {
@@ -70,10 +91,10 @@ private:
             {
                 // 1秒間IMUの姿勢データを蓄積する
                 tf2::Quaternion orientation;
-                orientation.setX(msg->orientation.x);
-                orientation.setY(msg->orientation.y);
-                orientation.setZ(msg->orientation.z);
-                orientation.setW(msg->orientation.w);
+                orientation.setX(msg->x);
+                orientation.setY(msg->y);
+                orientation.setZ(msg->z);
+                orientation.setW(msg->w);
 
                 accumulated_orientation_ += orientation;
                 sample_count_++;
@@ -118,22 +139,10 @@ private:
         }
         else
         {
-
-            // ToFセンサの値を取得し、姿勢による分を補正する
-            double roll, pitch, yaw;
-            double raw_z = msg->position.z;
-            tf2::Quaternion q(msg->orientation.x, msg->orientation.y, msg->orientation.z, msg->orientation.w);
-            tf2::Matrix3x3(q).getRPY(roll, pitch, yaw);
-
-            double vertical_distance = calculate_vertical_distance(raw_z, roll, pitch);
-            position_vector_.setZ(low_pass_filter(vertical_distance));
-
-            // printf("z_translation_: %f\n", z_translation_);
-
             // クォータニオンの差が大きい場合は外れ値として扱う
             if (!is_first_tf_pub_message)
             {
-                double diff = quaternion_difference(msg->orientation, previous_orientation);
+                double diff = quaternion_difference(*msg, previous_orientation);
                 if (diff > QUATERNION_DIFF_THRESHOLD)
                 {
                     // しきい値よりも、現在のフレームと前のフレームとの差の二乗和が大きい場合は外れ値として無視する
@@ -151,16 +160,30 @@ private:
             }
 
             // パブリッシュする値と比較に使う値を更新
-            orientation_ = msg->orientation;
-            previous_orientation = msg->orientation;
+            tf2::Quaternion imu_base_link_to_base_link_rotation, transformed_quaternion;
+            imu_base_link_to_base_link_rotation.setX(msg->x);
+            imu_base_link_to_base_link_rotation.setY(msg->y);
+            imu_base_link_to_base_link_rotation.setZ(msg->z);
+            imu_base_link_to_base_link_rotation.setW(msg->w);
+
+            // imu_base_link座標系からbase_link座標系への回転を計算
+            transformed_quaternion = accumulated_orientation_ * imu_base_link_to_base_link_rotation;
+
+            orientation_.x = transformed_quaternion.x();
+            orientation_.y = transformed_quaternion.y();
+            orientation_.z = transformed_quaternion.z();
+            orientation_.w = transformed_quaternion.w();
+
+            previous_orientation = *msg;
             is_first_tf_pub_message = false;
 
             // 前のクォータニオンの値を更新
-            previous_orientation = msg->orientation;
+            previous_orientation = *msg;
 
             geometry_msgs::msg::TransformStamped tf;
             tf.header.stamp = this->now();
-            tf.header.frame_id = "imu_base_link";
+            // tf.header.frame_id = "imu_base_link";
+            tf.header.frame_id = "map";
             tf.child_frame_id = "base_link";
             tf.transform.translation.x = position_vector_.getX();
             tf.transform.translation.y = position_vector_.getY();
@@ -173,35 +196,9 @@ private:
         }
     }
 
-    void point_stamped_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg)
+    void altitude_stamped_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg)
     {
-
-        geometry_msgs::msg::PointStamped transformed_point;
-        try
-        {
-            tf_buffer_.transform(*msg, transformed_point, "map");
-            position_vector_.setX(transformed_point.point.x);
-            position_vector_.setY(transformed_point.point.y);
-        }
-        catch (tf2::TransformException &ex)
-        {
-            RCLCPP_WARN(this->get_logger(), "Could not transform point: %s", ex.what());
-        }
-    }
-
-    double calculate_vertical_distance(double z_translation_, double roll, double pitch)
-    {
-        // Assuming z_translation_ is the hypotenuse of a right triangle,
-        // and roll is the angle between the hypotenuse and the vertical side
-        return z_translation_ * cos(roll) * cos(pitch);
-    }
-
-    float low_pass_filter(float z_current)
-    {
-        float alpha = 0.2; // 適切な値に調整する
-        float z_filtered = z_filtered_prev_ * (1 - alpha) + z_current * alpha;
-        z_filtered_prev_ = z_filtered; // 更新された値を保存
-        return z_filtered;
+        position_vector_.setZ(msg->point.z);
     }
 
     double quaternion_difference(const geometry_msgs::msg::Quaternion &q1, const geometry_msgs::msg::Quaternion &q2)
@@ -213,10 +210,10 @@ private:
             std::pow(q1.w - q2.w, 2));
     }
 
-    double z_filtered_prev_ = 0.0;
-
-    rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr imu_subscriber_;
     rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr point_stamped_subscriber_;
+    rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr altitude_stamped_subscriber_;
+    rclcpp::Subscription<geometry_msgs::msg::Quaternion>::SharedPtr quaternion_subscriber_;
+
     std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
     std::shared_ptr<tf2_ros::StaticTransformBroadcaster> static_tf_broadcaster_;
     tf2_ros::Buffer tf_buffer_;

@@ -26,20 +26,14 @@ public:
 private:
     void point_callback(const geometry_msgs::msg::Point::SharedPtr msg)
     {
-        if (count == 10)
-        {
-            count = 0;
-            geometry_msgs::msg::PointStamped pose;
-            pose.header.frame_id = "camera_link";
-            pose.header.stamp = this->get_clock()->now();
-            pose.point = *msg;
+        geometry_msgs::msg::PointStamped pose;
+        pose.header.frame_id = "camera_link";
+        pose.header.stamp = this->get_clock()->now();
+        pose.point = *msg;
 
-            publisher_->publish(pose);
-        }
-        count++;
+        publisher_->publish(pose);
     }
 
-    int count = 0;
     rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr publisher_;
     rclcpp::Subscription<geometry_msgs::msg::Point>::SharedPtr subscriber_;
 };

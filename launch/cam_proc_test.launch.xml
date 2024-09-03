@@ -17,6 +17,8 @@
     <arg name="position_stamped" default="/infra_cam/position_stamped" />
 
     <arg name="imu_tof" default="/imu_tof" />
+    <arg name="altitude" default="altitude" />
+    <arg name="quat" default="quat" />
 
     <arg name="camera_param_left"
         default="$(find-pkg-share nokolat2024)/param/camera_param_left.yaml" />
@@ -73,18 +75,30 @@
             <param name="output_stamped_topic_name" value="$(var position_stamped)" />
         </node>
 
+        <node pkg="nokolat2024" exec="imu_tof2posAndQuat" name="imu_tof2posAndQuat" output="screen">
+            <param name="input_imu_tof_topic_name" value="$(var imu_tof)" />
+            <param name="output_altitude_stamped_topic_name" value="$(var altitude)" />
+            <param name="output_quaternion_topic_name" value="$(var quat)" />
+        </node>
+
         <node pkg="nokolat2024" exec="tf_publisher" name="tf_publisher" output="screen">
             <param name="input_position_topic_name" value="$(var position_stamped)" />
-            <param name="input_imu_tof_topic_name" value="$(var imu_tof)" />
+            <param name="input_altitude_stamped_topic_name" value="$(var altitude)" />
+            <param name="input_quaternion_topic_name" value="$(var quat)" />
         </node>
+
 
     </group>
 
     <node pkg="tf2_ros" exec="static_transform_publisher" name="map_to_camera"
-        output="screen" args="0 0 2 0 0.2164396 0 0.976296 map camera_link" />
+        output="screen" args="0 0 1 0 0.2164396 0 0.976296 map camera_link" />
 
     <node pkg="tf2_ros" exec="static_transform_publisher" name="camera_to_left"
         output="screen" args="0.065 0 0 0 0 0 1 camera_link left_camera_link" />
+
+    <node pkg="tf2_ros" exec="static_transform_publisher" name="base_link_to_imu_link"
+        output="screen" args="0.065 0 0 0 0 0 1 base_link imu_link" />
+
 
     <node pkg="rviz2" exec="rviz2" name="rviz"
         args="-d $(find-pkg-share nokolat2024)/rviz/rvizmodel.rviz" output="screen" />
