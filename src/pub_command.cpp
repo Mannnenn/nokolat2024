@@ -1,6 +1,6 @@
 #include "rclcpp/rclcpp.hpp"
-#include "geometry_msgs/msg/twist.hpp"
 #include "sensor_msgs/msg/joy.hpp"
+#include "geometry_msgs/msg/twist.hpp"
 
 class JoyToInt16ArrayPublisher : public rclcpp::Node
 {

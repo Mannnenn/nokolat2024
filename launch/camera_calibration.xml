@@ -1,10 +1,16 @@
 <launch>
+    <node pkg="nokolat2024" exec="image_sync_node" name="image_sync_node">
+        <remap from="image_topic1" to="/infra_cam/left/infra1/image_rect_raw" />
+        <remap from="image_topic2" to="/infra_cam/right/infra2/image_rect_raw" />
+        <remap from="synced_image_topic1" to="/infra_cam/left/infra1/synced_image_topic" />
+        <remap from="synced_image_topic2" to="/infra_cam/right/infra2/synced_image_topic" />
+    </node>
     <node pkg="camera_calibration" exec="cameracalibrator" output="screen">
         <param name="approximate" value="0.1" />
         <param name="size" value="8x6" />
         <param name="square" value="0.049" />
-        <remap from="right" to="/infra_cam/left/infra1/image_rect_raw" />
-        <remap from="left" to="/infra_cam/right/infra2/image_rect_raw" />
+        <remap from="right" to="/infra_cam/left/infra1/synced_image_topic" />
+        <remap from="left" to="/infra_cam/right/infra2/synced_image_topic" />
         <remap from="right_camera" to="/my_stereo/right" />
         <remap from="left_camera" to="/my_stereo/left" />
     </node>
