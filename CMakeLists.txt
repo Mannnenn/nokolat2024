@@ -73,6 +73,11 @@ add_executable(cog_corrected src/cog_corrected.cpp)
 ament_target_dependencies(cog_corrected rclcpp sensor_msgs geometry_msgs image_transport cv_bridge OpenCV yaml-cpp)
 target_link_libraries(cog_corrected yaml-cpp)
 
+
+add_executable(pub_command src/pub_command.cpp)
+ament_target_dependencies(pub_command rclcpp sensor_msgs std_msgs)
+
+
 install(TARGETS
   tf_publisher
   image_diff_extraction
@@ -80,6 +85,7 @@ install(TARGETS
   position_estimation
   point2pointStamped
   cog_corrected
+  pub_command
   DESTINATION lib/${PROJECT_NAME})
 
 
