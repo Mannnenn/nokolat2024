@@ -173,7 +173,7 @@ private:
             orientation_.x = transformed_quaternion.x();
             orientation_.y = transformed_quaternion.y();
             orientation_.z = transformed_quaternion.z();
-            // 回転軸の向きを逆にする
+            // 回転方向を逆にする
             orientation_.w = -transformed_quaternion.w();
 
             previous_orientation = *msg;
@@ -182,19 +182,7 @@ private:
             // 前のクォータニオンの値を更新
             previous_orientation = *msg;
 
-            geometry_msgs::msg::TransformStamped tf;
-            tf.header.stamp = this->now();
-            // tf.header.frame_id = "imu_base_link";
-            tf.header.frame_id = "map";
-            tf.child_frame_id = "base_link";
-            tf.transform.translation.x = position_vector_.getX();
-            tf.transform.translation.y = position_vector_.getY();
-            tf.transform.translation.z = position_vector_.getZ();
-            tf.transform.rotation.x = orientation_.x;
-            tf.transform.rotation.y = orientation_.y;
-            tf.transform.rotation.z = orientation_.z;
-            tf.transform.rotation.w = orientation_.w;
-            tf_broadcaster_->sendTransform(tf);
+            send_tf();
         }
     }
 
@@ -210,6 +198,20 @@ private:
             std::pow(q1.y - q2.y, 2) +
             std::pow(q1.z - q2.z, 2) +
             std::pow(q1.w - q2.w, 2));
+    }
+
+    void send_tf()
+    {
+        geometry_msgs::msg::TransformStamped transform_stamped;
+        transform_stamped.header.stamp = this->now();
+        transform_stamped.header.frame_id = "map";
+        transform_stamped.child_frame_id = "base_link";
+        transform_stamped.transform.translation.x = position_vector_.getX();
+        transform_stamped.transform.translation.y = position_vector_.getY();
+        transform_stamped.transform.translation.z = position_vector_.getZ();
+        transform_stamped.transform.rotation = orientation_;
+
+        tf_broadcaster_->sendTransform(transform_stamped);
     }
 
     rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr point_stamped_subscriber_;
@@ -235,11 +237,11 @@ private:
     bool is_first_tf_pub_message = true;
 
     // 外れ値を検出するための閾値
-    const double QUATERNION_DIFF_THRESHOLD = 0.3;
+    const double QUATERNION_DIFF_THRESHOLD = 0.2;
 
     // 外れ値除去された回数をカウントする
     int ignore = 0;
-    int reset_lim = 11;
+    int reset_lim = 60;
 
     // 前のクォータニオンの値を保持する変数
     geometry_msgs::msg::Quaternion previous_orientation;

@@ -78,19 +78,8 @@ private:
         return z_translation_ * cos(roll) * cos(pitch);
     }
 
-    float low_pass_filter(float z_current)
-    {
-        float alpha = 0.2; // 適切な値に調整する
-        float z_filtered = z_filtered_prev_ * (1 - alpha) + z_current * alpha;
-        z_filtered_prev_ = z_filtered; // 更新された値を保存
-        return z_filtered;
-    }
-
-    double z_filtered_prev_ = 0.0;
-    double z_translation_;
-
     std::deque<double> z_translation_history_;
-    long unsigned int window_size_ = 30;
+    long unsigned int window_size_ = 50;
 
     rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr imu_subscriber_;
     rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr publisher_point_stamped_;

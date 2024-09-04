@@ -40,8 +40,18 @@ public:
             std::chrono::milliseconds(10),
             std::bind(&Tf2RpyNode::timer_callback, this));
 
-        rpy_pub_ = this->create_publisher<nokolat2024_msg::msg::Rpy>("rpy", 10);
-        angular_velocity_pub_ = this->create_publisher<nokolat2024_msg::msg::Rpy>("angular_velocity", 10);
+        // パラメータの宣言
+        this->declare_parameter<std::string>("output_angular_topic_name", "/rpy");
+        this->declare_parameter<std::string>("output_angular_velocity_topic_name", "/angular_velocity");
+
+        // パラメータの取得
+        std::string output_angular_topic_name;
+        this->get_parameter("output_angular_topic_name", output_angular_topic_name);
+        std::string output_angular_velocity_topic_name;
+        this->get_parameter("output_angular_velocity_topic_name", output_angular_velocity_topic_name);
+
+        rpy_pub_ = this->create_publisher<nokolat2024_msg::msg::Rpy>(output_angular_topic_name, 10);
+        angular_velocity_pub_ = this->create_publisher<nokolat2024_msg::msg::Rpy>(output_angular_velocity_topic_name, 10);
     }
 
 private:
@@ -99,7 +109,7 @@ private:
             double pitch_diff = (pitch_history_[2] - pitch_history_[0]) / (2 * diff.seconds());
             double yaw_diff = (yaw_history_[2] - yaw_history_[0]) / (2 * diff.seconds());
 
-            RCLCPP_INFO(this->get_logger(), "roll_diff: %f, pitch_diff: %f, yaw_diff: %f", roll_diff, pitch_diff, yaw_diff);
+            // RCLCPP_INFO(this->get_logger(), "roll_diff: %f, pitch_diff: %f, yaw_diff: %f", roll_diff, pitch_diff, yaw_diff);
 
             // 履歴を削除
             roll_history_.pop_front();
