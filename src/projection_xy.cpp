@@ -29,7 +29,7 @@ public:
             catch (tf2::TransformException &ex)
             {
                 RCLCPP_WARN(this->get_logger(), "Waiting for base_link to become available: %s", ex.what());
-                rclcpp::sleep_for(std::chrono::milliseconds(500));
+                rclcpp::sleep_for(std::chrono::milliseconds(1000));
             }
         }
 
