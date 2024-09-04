@@ -7,7 +7,7 @@
   </joint>
   <link name="imu_link"> #リンクの設定
     <visual>
-      <origin xyz="0.06 0 0" rpy="1.6 0.5 -1.8"/> <!-- Adjust origin and orientation as needed -->
+      <origin xyz="0.06 0 0" rpy="1.57 0 3.14"/> <!-- Adjust origin and orientation as needed -->
       <geometry>
         <mesh filename="package://nokolat2024/urdf/model.stl"scale="0.001 0.001 0.001"/>
       </geometry>

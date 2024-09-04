@@ -114,6 +114,7 @@ private:
                 //            accumulated_orientation_.x(), accumulated_orientation_.y(),
                 //            accumulated_orientation_.z(), accumulated_orientation_.w());
 
+                map2imu_base_link_rotation_ = accumulated_orientation_;
                 tf2::Quaternion map_to_imu_rotation = accumulated_orientation_.inverse(); // map座標系に対するIMU座標系の回転
 
                 // 変換をブロードキャスト
@@ -147,7 +148,7 @@ private:
                 {
                     // しきい値よりも、現在のフレームと前のフレームとの差の二乗和が大きい場合は外れ値として無視する
                     // RCLCPP_WARN(this->get_logger(), "Detected outlier quaternion, ignoring this IMU message.");
-                    if (ignore > 100)
+                    if (ignore > reset_lim)
                     {
                         ignore = 0;
                     }
@@ -160,19 +161,20 @@ private:
             }
 
             // パブリッシュする値と比較に使う値を更新
-            tf2::Quaternion imu_base_link_to_base_link_rotation, transformed_quaternion;
-            imu_base_link_to_base_link_rotation.setX(msg->x);
-            imu_base_link_to_base_link_rotation.setY(msg->y);
-            imu_base_link_to_base_link_rotation.setZ(msg->z);
-            imu_base_link_to_base_link_rotation.setW(msg->w);
+            tf2::Quaternion base_link_rotation, transformed_quaternion;
+            base_link_rotation.setX(msg->x);
+            base_link_rotation.setY(msg->y);
+            base_link_rotation.setZ(msg->z);
+            base_link_rotation.setW(msg->w);
 
             // imu_base_link座標系からbase_link座標系への回転を計算
-            transformed_quaternion = accumulated_orientation_ * imu_base_link_to_base_link_rotation;
+            transformed_quaternion = base_link_rotation.inverse() * map2imu_base_link_rotation_;
 
             orientation_.x = transformed_quaternion.x();
             orientation_.y = transformed_quaternion.y();
             orientation_.z = transformed_quaternion.z();
-            orientation_.w = transformed_quaternion.w();
+            // 回転軸の向きを逆にする
+            orientation_.w = -transformed_quaternion.w();
 
             previous_orientation = *msg;
             is_first_tf_pub_message = false;
@@ -225,6 +227,7 @@ private:
     rclcpp::Time start_time_;
     bool initial_alignment_done_;
     tf2::Quaternion accumulated_orientation_;
+    tf2::Quaternion map2imu_base_link_rotation_;
     int sample_count_ = 0;
     bool first_callback = true;
 
@@ -232,10 +235,11 @@ private:
     bool is_first_tf_pub_message = true;
 
     // 外れ値を検出するための閾値
-    const double QUATERNION_DIFF_THRESHOLD = 0.1;
+    const double QUATERNION_DIFF_THRESHOLD = 0.3;
 
     // 外れ値除去された回数をカウントする
     int ignore = 0;
+    int reset_lim = 11;
 
     // 前のクォータニオンの値を保持する変数
     geometry_msgs::msg::Quaternion previous_orientation;

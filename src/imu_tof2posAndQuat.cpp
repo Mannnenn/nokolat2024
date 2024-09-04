@@ -90,7 +90,7 @@ private:
     double z_translation_;
 
     std::deque<double> z_translation_history_;
-    long unsigned int window_size_ = 10;
+    long unsigned int window_size_ = 30;
 
     rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr imu_subscriber_;
     rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr publisher_point_stamped_;
