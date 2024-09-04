@@ -60,8 +60,12 @@ private:
     cv::Mat diff;
     cv::absdiff(current_frame, previous_frame_abs, diff);
 
+    // 2値化
+    cv::Mat binary_image;
+    cv::threshold(diff, binary_image, 80, 255, cv::THRESH_BINARY);
+
     // 差分画像をパブリッシュ
-    auto diff_msg = cv_bridge::CvImage(std_msgs::msg::Header(), "mono8", diff).toImageMsg();
+    auto diff_msg = cv_bridge::CvImage(std_msgs::msg::Header(), "mono8", binary_image).toImageMsg();
     publisher_->publish(*diff_msg);
   }
 

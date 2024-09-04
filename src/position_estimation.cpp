@@ -1,5 +1,8 @@
 #include <rclcpp/rclcpp.hpp>
+
 #include <iostream>
+#include <deque>
+
 #include <std_msgs/msg/float32.hpp>
 #include <geometry_msgs/msg/point.hpp>
 #include <yaml-cpp/yaml.h>
@@ -98,14 +101,29 @@ private:
             return;
         }
 
-        float x = (position_left_.x + position_right_.x) / 2;
-        float y = (position_left_.y + position_right_.y) / 2;
+        float mean_x = (position_left_.x + position_right_.x) / 2;
+        float mean_y = (position_left_.y + position_right_.y) / 2;
 
         // calc position,In Realsense D455, the depth is the distance from the camera to the object.
 
-        position_.y = -(x - center_x) * depth_ / focal_length; // left as y axis.
-        position_.z = (y - center_y) * depth_ / focal_length;  // up as z axis.
-        position_.x = depth_;                                  // forward as x axis.
+        y_history_.push_back((mean_x - center_x) * depth_ / focal_length);
+        z_history_.push_back((mean_y - center_y) * depth_ / focal_length);
+        x_history_.push_back(depth_);
+
+        if (x_history_.size() > window_size_)
+        {
+            x_history_.pop_front();
+            y_history_.pop_front();
+            z_history_.pop_front();
+        }
+
+        double avg_x = std::accumulate(x_history_.begin(), x_history_.end(), 0.0) / x_history_.size();
+        double avg_y = std::accumulate(y_history_.begin(), y_history_.end(), 0.0) / y_history_.size();
+        double avg_z = std::accumulate(z_history_.begin(), z_history_.end(), 0.0) / z_history_.size();
+
+        position_.x = avg_x;
+        position_.y = avg_y;
+        position_.z = avg_z;
 
         // printf("x: %f, y: %f\n", position_.x, position_.z);
 
@@ -120,15 +138,21 @@ private:
     geometry_msgs::msg::Point position_left_;
     geometry_msgs::msg::Point position_right_;
 
+    YAML::Node camera_info_right;
+
+    geometry_msgs::msg::Point position_;
+
     float focal_length;
     float center_x;
     float center_y;
 
     float depth_;
 
-    YAML::Node camera_info_right;
+    std::deque<float> x_history_;
+    std::deque<float> y_history_;
+    std::deque<float> z_history_;
 
-    geometry_msgs::msg::Point position_;
+    long unsigned int window_size_ = 30;
 };
 
 int main(int argc, char *argv[])

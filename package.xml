@@ -9,6 +9,7 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
+
   <depend>rclcpp</depend>
   <depend>tf2_ros</depend>
   <depend>sensor_msgs</depend>
@@ -17,11 +18,17 @@
   <depend>tf_geometry_msgs</depend>
   <depend>camera_info_manager</depend>
   <depend>message_filters</depend>
+  <depend>std_msgs</depend>
 
   <depend>yaml</depend>
   <depend>OpenCV</depend>
   <depend>cv_bridge</depend>
   <depend>image_transport</depend>
+
+  <depend>nokolat2024_msg</depend>
+
+  <build_depend>eigen3_cmake_module</build_depend>
+  <exec_depend>libeigen3-dev</exec_depend>
 
   <exec_depend>rviz2</exec_depend>
   <exec_depend>xacro</exec_depend>
@@ -29,12 +36,12 @@
   <build_depend>rosidl_default_generators</build_depend>
   <exec_depend>rosidl_default_runtime</exec_depend>
 
-
   <exec_depend>ros2launch</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
 
+  <member_of_group>rosidl_interface_packages</member_of_group>
 
   <export>
     <build_type>ament_cmake</build_type>

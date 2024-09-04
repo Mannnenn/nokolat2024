@@ -1,0 +1,17 @@
+<launch>
+
+    <node pkg="micro_ros_agent" exec="micro_ros_agent" name="micro_ros_agent" output="screen"
+        args="udp4 --port 8888" />
+
+
+    <node pkg="nokolat2024" exec="tf_publisher" name="tf_publisher" output="screen" />
+    <node pkg="nokolat2024" exec="projection_xy" name="projection_xy" output="screen" />
+    <node pkg="nokolat2024" exec="recive_command" name="recive_command" output="screen" />
+    <node pkg="nokolat2024" exec="tf2rpy" name="tf2rpy" output="screen" />
+
+    <!--
+            <node pkg="nokolat2024" exec="init_pose" name="init_pose" output="screen" />
+    -->
+
+    <node pkg="rviz2" exec="rviz2" name="rviz" />
+</launch>
