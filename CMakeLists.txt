@@ -98,6 +98,15 @@ ament_target_dependencies(tf2rpy rclcpp  geometry_msgs tf2_ros nokolat2024_msg)
 add_executable(imu_tof2posAndQuat src/imu_tof2posAndQuat.cpp)
 ament_target_dependencies(imu_tof2posAndQuat rclcpp  geometry_msgs tf2_ros)
 
+add_executable(main_control src/main_control.cpp)
+ament_target_dependencies(main_control rclcpp  std_msgs geometry_msgs tf2_ros nokolat2024_msg)
+target_link_libraries(main_control yaml-cpp)
+
+add_executable(get_neutral_position src/get_neutral_position.cpp)
+ament_target_dependencies(get_neutral_position rclcpp nokolat2024_msg)
+
+add_executable(send_command src/send_command.cpp)
+ament_target_dependencies(send_command rclcpp nokolat2024_msg geometry_msgs)
 
 install(TARGETS
   tf_publisher
@@ -112,6 +121,9 @@ install(TARGETS
   recive_command
   tf2rpy
   imu_tof2posAndQuat
+  main_control
+  get_neutral_position
+  send_command
   DESTINATION lib/${PROJECT_NAME})
 
 
