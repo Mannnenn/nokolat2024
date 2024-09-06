@@ -1,37 +1,36 @@
 control_info_config:
   chassis:
     throttle:
-      max: 10000
-      min: 0
+      max: 1000
+      min: 2000
     elevator:
-      max: 100
-      min: 0
+      max: 1680
+      min: 368
     aileron:
       right:
-        max: 100
-        min: 0
+        max: 1680
+        min: 368
       left:
-        max: 100
-        min: 0
+        max: 1680
+        min: 368
     rudder:
-      max: 100
-      min: 0
+      max: 1680
+      min: 368
     drop:
-      max: 100
-      center: 50
-      min: 0
+      max: 1680
+      center: 1000
+      min: 368
 
   auto_turning:
     gain:
-      throttle:
-        p: 100
       elevator:
-        p: 100
+        p: 10
       aileron:
-        p: 100
+        p: 200
     target:
-      velocity: 0.5
-      altitude: 0.5
+      altitude: 3.0
       roll: 0.0
-      pitch: 0.0
-      rudder: 0.0
+      throttle: 500
+      rudder: 1200
+    delay:
+      rudder: 100

@@ -29,6 +29,7 @@ find_package(Eigen3 REQUIRED)
 
 
 include_directories(${EIGEN3_INCLUDE_DIR})
+include_directories(include)
 
 # install launch files
 install(
@@ -70,15 +71,12 @@ add_executable(position_estimation src/position_estimation.cpp)
 ament_target_dependencies(position_estimation rclcpp image_transport sensor_msgs cv_bridge OpenCV geometry_msgs yaml-cpp)
 target_link_libraries(position_estimation yaml-cpp)
 
-
 add_executable(point2pointStamped src/point2pointStamped.cpp)
 ament_target_dependencies(point2pointStamped rclcpp geometry_msgs nav_msgs)
-
 
 add_executable(cog_corrected src/cog_corrected.cpp)
 ament_target_dependencies(cog_corrected rclcpp sensor_msgs geometry_msgs image_transport cv_bridge OpenCV yaml-cpp)
 target_link_libraries(cog_corrected yaml-cpp)
-
 
 add_executable(pub_command src/pub_command.cpp)
 ament_target_dependencies(pub_command rclcpp sensor_msgs std_msgs)

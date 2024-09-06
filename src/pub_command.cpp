@@ -8,7 +8,7 @@ public:
     JoyToInt16ArrayPublisher()
         : Node("command_publisher")
     {
-        publisher_ = this->create_publisher<geometry_msgs::msg::Twist>("micro_ros_arduino_twist_subscriber", 10);
+        publisher_ = this->create_publisher<geometry_msgs::msg::Twist>("command", 10);
         subscription_ = this->create_subscription<sensor_msgs::msg::Joy>(
             "joy", 10, std::bind(&JoyToInt16ArrayPublisher::joyCallback, this, std::placeholders::_1));
     }

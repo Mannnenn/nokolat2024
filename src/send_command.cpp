@@ -32,11 +32,11 @@ private:
     {
         geometry_msgs::msg::Twist command_send_msg;
         command_send_msg.linear.x = msg->throttle;
-        command_send_msg.linear.y = msg->elevator;
-        command_send_msg.linear.z = msg->rudder;
+        command_send_msg.linear.y = msg->rudder;
+        command_send_msg.linear.z = msg->elevator;
         command_send_msg.angular.x = msg->aileron_r;
-        command_send_msg.angular.y = msg->dropping_device;
-        command_send_msg.angular.z = msg->aileron_l;
+        command_send_msg.angular.y = msg->aileron_l;
+        command_send_msg.angular.z = msg->dropping_device;
 
         publisher_->publish(command_send_msg);
 

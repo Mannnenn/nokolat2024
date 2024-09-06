@@ -1,19 +1,9 @@
-#include <rclcpp/rclcpp.hpp>
+#include "nokolat2024/main_control.hpp"
 
-#include <unordered_map>
-#include <string>
-#include <yaml-cpp/yaml.h>
-
-#include "std_msgs/msg/string.hpp"
-#include "geometry_msgs/msg/point_stamped.hpp"
-
-#include "nokolat2024_msg/msg/rpy.hpp"
-#include "nokolat2024_msg/msg/command.hpp"
-
-class MyNode : public rclcpp::Node
+class MainControlNode : public rclcpp::Node
 {
 public:
-    MyNode() : Node("my_node")
+    MainControlNode() : Node("main_control_node")
     {
         // パラメータの宣言
         this->declare_parameter<std::string>("input_neutral_position_topic_name", "/neutral_position"); // パラメータの宣言
@@ -35,13 +25,13 @@ public:
         this->get_parameter("output_command_topic_name", output_command_topic_name);
 
         // SubscriberとPublisherの設定
-        neutral_position_subscriber_ = this->create_subscription<nokolat2024_msg::msg::Command>(input_neutral_position_topic_name, 10, std::bind(&MyNode::neutral_position_callback, this, std::placeholders::_1));
+        neutral_position_subscriber_ = this->create_subscription<nokolat2024_msg::msg::Command>(input_neutral_position_topic_name, 10, std::bind(&MainControlNode::neutral_position_callback, this, std::placeholders::_1));
 
-        mode_subscriber_ = this->create_subscription<std_msgs::msg::String>(input_mode_topic_name, 10, std::bind(&MyNode::mode_callback, this, std::placeholders::_1));
+        mode_subscriber_ = this->create_subscription<std_msgs::msg::String>(input_mode_topic_name, 10, std::bind(&MainControlNode::mode_callback, this, std::placeholders::_1));
 
-        rpy_subscriber_ = this->create_subscription<nokolat2024_msg::msg::Rpy>(input_angular_topic_name, 10, std::bind(&MyNode::rpy_callback, this, std::placeholders::_1));
+        rpy_subscriber_ = this->create_subscription<nokolat2024_msg::msg::Rpy>(input_angular_topic_name, 10, std::bind(&MainControlNode::rpy_callback, this, std::placeholders::_1));
 
-        altitude_subscriber_ = this->create_subscription<geometry_msgs::msg::PointStamped>(input_altitude_stamped_topic_name, 10, std::bind(&MyNode::altitude_callback, this, std::placeholders::_1));
+        altitude_subscriber_ = this->create_subscription<geometry_msgs::msg::PointStamped>(input_altitude_stamped_topic_name, 10, std::bind(&MainControlNode::altitude_callback, this, std::placeholders::_1));
 
         command_publisher_ = this->create_publisher<nokolat2024_msg::msg::Command>(output_command_topic_name, 10);
 
@@ -50,6 +40,7 @@ public:
         std::string yaml_control_config_path;
         this->get_parameter("yaml_control_config", yaml_control_config_path);
 
+        // 制御パラメータを読み込む
         try
         {
             // YAMLファイルを読み込む
@@ -95,20 +86,22 @@ public:
         RCLCPP_INFO(this->get_logger(), "get chassis parameter");
 
         // ゲインなどのパラメータを取得
-        gain.throttle_gain = control_info_config_["auto_turning"]["gain"]["throttle"]["p"].as<double>();
-        gain.elevator_gain = control_info_config_["auto_turning"]["gain"]["elevator"]["p"].as<double>();
-        gain.aileron_gain = control_info_config_["auto_turning"]["gain"]["aileron"]["p"].as<double>();
+        auto_turning_gain.elevator_gain = control_info_config_["auto_turning"]["gain"]["elevator"]["p"].as<double>();
+        auto_turning_gain.aileron_gain = control_info_config_["auto_turning"]["gain"]["aileron"]["p"].as<double>();
 
         RCLCPP_INFO(this->get_logger(), "get gain parameter");
 
         // 制御目標値を取得
-        target.velocity_target = control_info_config_["auto_turning"]["target"]["velocity"].as<double>();
-        target.altitude_target = control_info_config_["auto_turning"]["target"]["altitude"].as<double>();
-        target.roll_target = control_info_config_["auto_turning"]["target"]["roll"].as<double>();
-        target.pitch_target = control_info_config_["auto_turning"]["target"]["pitch"].as<double>();
-        target.rudder_target = control_info_config_["auto_turning"]["target"]["rudder"].as<double>();
+        auto_turning_target.altitude_target = control_info_config_["auto_turning"]["target"]["altitude"].as<double>();
+        auto_turning_target.roll_target = control_info_config_["auto_turning"]["target"]["roll"].as<double>();
+        auto_turning_target.throttle_target = control_info_config_["auto_turning"]["target"]["throttle"].as<double>();
+        auto_turning_target.rudder_target = control_info_config_["auto_turning"]["target"]["rudder"].as<double>();
 
         RCLCPP_INFO(this->get_logger(), "get target parameter");
+
+        delay_window = control_info_config_["auto_turning"]["delay"]["rudder"].as<int>();
+
+        RCLCPP_INFO(this->get_logger(), "get delay window parameter");
     }
 
 private:
@@ -131,11 +124,30 @@ private:
     {
         pose_received_.roll = msg->roll;
         pose_received_.pitch = msg->pitch;
+        pose_received_.yaw = msg->yaw;
 
-        if (control_mode_ == control_mode_map.at(CONTROL_MODE::AUTO_TURNING))
+        if (control_mode_ == nokolat2024::main_control::control_mode_map.at(nokolat2024::main_control::CONTROL_MODE::AUTO_TURNING))
         {
             auto_turning_control();
             // RCLCPP_INFO(this->get_logger(), "AUTO_TURNING");
+        }
+
+        if (control_mode_ == nokolat2024::main_control::control_mode_map.at(nokolat2024::main_control::CONTROL_MODE::AUTO_EIGHT))
+        {
+            auto_eight_control();
+            // RCLCPP_INFO(this->get_logger(), "AUTO_EIGHT");
+        }
+
+        if (control_mode_ == nokolat2024::main_control::control_mode_map.at(nokolat2024::main_control::CONTROL_MODE::AUTO_RISE_TURNING))
+        {
+            // auto_rise_turning_control();
+            //  RCLCPP_INFO(this->get_logger(), "AUTO_RISE_TURNING");
+        }
+
+        if (control_mode_ == nokolat2024::main_control::control_mode_map.at(nokolat2024::main_control::CONTROL_MODE::AUTO_LANDING))
+        {
+            // auto_landing_control();
+            //  RCLCPP_INFO(this->get_logger(), "AUTO_LANDING");
         }
     }
 
@@ -147,103 +159,70 @@ private:
     void auto_turning_control()
     {
         // 制御値を計算
-        double throttle = neutral_position_.throttle + gain.throttle_gain * (target.velocity_target - pose_received_.z);
-        double elevator = neutral_position_.elevator + gain.elevator_gain * (target.altitude_target - pose_received_.z);
-        double aileron_r = neutral_position_.aileron_r + gain.aileron_gain * (target.roll_target - pose_received_.roll);
-        double aileron_l = neutral_position_.aileron_l + gain.aileron_gain * (target.roll_target - pose_received_.roll);
-        double rudder = neutral_position_.rudder; //+ gain.aileron_gain * (target.rudder_target - pose_received_.roll);
+        double throttle = auto_turning_target.throttle_target;
+        double elevator = neutral_position_.elevator + auto_turning_gain.elevator_gain * (auto_turning_target.altitude_target - pose_received_.z);
+        double aileron_r = neutral_position_.aileron_r + auto_turning_gain.aileron_gain * (auto_turning_target.roll_target - pose_received_.roll);
+        double aileron_l = neutral_position_.aileron_l + auto_turning_gain.aileron_gain * (auto_turning_target.roll_target - pose_received_.roll);
+        double rudder;
+
+        // ラダーの制御値を遅延させる
+        if (delay_count > 100)
+        {
+            rudder = auto_turning_target.rudder_target;
+        }
+        else
+        {
+            delay_count++;
+            rudder = neutral_position_.rudder;
+        }
 
         // 制御値を送信
         nokolat2024_msg::msg::Command command;
-        command.throttle = throttle;
-        command.elevator = elevator;
-        command.aileron_r = aileron_r;
-        command.aileron_l = aileron_l;
-        command.rudder = rudder;
-        command.dropping_device = neutral_position_.drop;
+        command.throttle = cutoff_min_max(throttle, config.throttle_min, config.throttle_max);
+        command.elevator = cutoff_min_max(elevator, config.elevator_min, config.elevator_max);
+        command.aileron_r = cutoff_min_max(aileron_r, config.aileron_min_r, config.aileron_max_r);
+        command.aileron_l = cutoff_min_max(aileron_l, config.aileron_min_l, config.aileron_max_l);
+        command.rudder = cutoff_min_max(rudder, config.rudder_min, config.rudder_max);
+        command.dropping_device = config.drop_min; // ドロップ装置は常に閉じておく
         command_publisher_->publish(command);
     }
 
-    // Define control mode
-    enum CONTROL_MODE
+    void auto_eight_control()
     {
-        MANUAL = 0,
-        AUTO_TURNING = 1,
-        AUTO_RISE_TURNING = 2,
-        AUTO_LANDING = 3,
-        AUTO_EIGHT = 4,
-    };
+        // 制御値を計算
+    }
 
-    // マップを初期化
-    const std::unordered_map<int16_t, std::string> control_mode_map = {
-        {CONTROL_MODE::MANUAL, "MANUAL"},
-        {CONTROL_MODE::AUTO_TURNING, "AUTO_TURNING"},
-        {CONTROL_MODE::AUTO_RISE_TURNING, "AUTO_RISE_TURNING"},
-        {CONTROL_MODE::AUTO_LANDING, "AUTO_LANDING"},
-        {CONTROL_MODE::AUTO_EIGHT, "AUTO_EIGHT"}};
-
-    struct ControlInfo_config
+    double cutoff_min_max(double value, double min, double max)
     {
-        int throttle_max;
-        int throttle_min;
-        int elevator_max;
-        int elevator_min;
-        int aileron_max_r;
-        int aileron_min_r;
-        int aileron_max_l;
-        int aileron_min_l;
-        int rudder_max;
-        int rudder_min;
-        int drop_max;
-        int drop_center;
-        int drop_min;
-    };
-
-    struct ControlInfo_gain
-    {
-        double throttle_gain;
-        double elevator_gain;
-        double aileron_gain;
-    };
-
-    struct ControlInfo_target
-    {
-        double velocity_target;
-        double altitude_target;
-        double roll_target;
-        double pitch_target;
-        double rudder_target;
-    };
-
-    struct Command
-    {
-        double throttle;
-        double elevator;
-        double aileron_r;
-        double aileron_l;
-        double rudder;
-        double drop;
-    };
-
-    struct Pose
-    {
-        double roll;
-        double pitch;
-        double z;
-    };
+        if (value < min)
+        {
+            return min;
+        }
+        else if (value > max)
+        {
+            return max;
+        }
+        else
+        {
+            return value;
+        }
+    }
 
     // 制御情報を格納
-    ControlInfo_config config;
-    ControlInfo_gain gain;
-    ControlInfo_target target;
+    nokolat2024::main_control::ControlInfo_config config;
+    nokolat2024::main_control::ControlInfo_gain auto_turning_gain;
+    nokolat2024::main_control::ControlInfo_target auto_turning_target;
 
-    Pose pose_received_;
-    Command neutral_position_;
+    nokolat2024::main_control::Pose pose_received_;
+    nokolat2024::main_control::Command neutral_position_;
 
     // パラメータを取得
     YAML::Node control_info_config_;
 
     std::string control_mode_;
+
+    int delay_window;
+    int delay_count = 0;
 
     rclcpp::Subscription<nokolat2024_msg::msg::Command>::SharedPtr neutral_position_subscriber_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr mode_subscriber_;
@@ -256,7 +235,7 @@ private:
 int main(int argc, char *argv[])
 {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<MyNode>());
+    rclcpp::spin(std::make_shared<MainControlNode>());
     rclcpp::shutdown();
     return 0;
 }

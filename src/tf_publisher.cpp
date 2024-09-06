@@ -135,6 +135,8 @@ private:
                 static_tf_broadcaster_->sendTransform(transform_stamped);
                 initial_alignment_done_ = true;
 
+                previous_orientation = *msg;
+
                 // RCLCPP_INFO(this->get_logger(), "IMU alignment completed.");
             }
         }
@@ -237,7 +239,7 @@ private:
     bool is_first_tf_pub_message = true;
 
     // 外れ値を検出するための閾値
-    const double QUATERNION_DIFF_THRESHOLD = 0.2;
+    const double QUATERNION_DIFF_THRESHOLD = 0.1;
 
     // 外れ値除去された回数をカウントする
     int ignore = 0;

@@ -60,7 +60,18 @@ private:
         geometry_msgs::msg::TransformStamped transform_stamped;
         try
         {
-            transform_stamped = tf_buffer_->lookupTransform("base_link", "base_link_projected", tf2::TimePointZero);
+            transform_stamped = tf_buffer_->lookupTransform("base_link_projected", "base_link", tf2::TimePointZero);
+        }
+        catch (tf2::TransformException &ex)
+        {
+            RCLCPP_ERROR(this->get_logger(), "%s", ex.what());
+            return;
+        }
+
+        geometry_msgs::msg::TransformStamped transform_stamped_yaw;
+        try
+        {
+            transform_stamped_yaw = tf_buffer_->lookupTransform("map", "base_link_projected", tf2::TimePointZero);
         }
         catch (tf2::TransformException &ex)
         {
@@ -74,16 +85,27 @@ private:
             transform_stamped.transform.rotation.z,
             transform_stamped.transform.rotation.w);
 
+        tf2::Quaternion q_yaw(
+            transform_stamped_yaw.transform.rotation.x,
+            transform_stamped_yaw.transform.rotation.y,
+            transform_stamped_yaw.transform.rotation.z,
+            transform_stamped_yaw.transform.rotation.w);
+
         tf2::Matrix3x3 m(q);
+
+        tf2::Matrix3x3 m_yaw(q_yaw);
 
         double roll, pitch, yaw;
         m.getRPY(roll, pitch, yaw);
+
+        double roll_yaw, pitch_yaw, yaw_yaw;
+        m_yaw.getRPY(roll_yaw, pitch_yaw, yaw_yaw);
 
         nokolat2024_msg::msg::Rpy rpy_msg;
 
         rpy_msg.roll = roll;
         rpy_msg.pitch = pitch;
-        rpy_msg.yaw = yaw;
+        rpy_msg.yaw = yaw_yaw;
 
         // パブリッシュ
         rpy_pub_->publish(rpy_msg);
@@ -91,7 +113,7 @@ private:
         // 履歴を保存
         roll_history_.push_back(roll);
         pitch_history_.push_back(pitch);
-        yaw_history_.push_back(yaw);
+        yaw_history_.push_back(yaw_yaw);
 
         rclcpp::Time current_time = this->now();
         if (last_time_.seconds() == 0)
@@ -129,6 +151,7 @@ private:
     rclcpp::Publisher<nokolat2024_msg::msg::Rpy>::SharedPtr rpy_pub_;
     rclcpp::Publisher<nokolat2024_msg::msg::Rpy>::SharedPtr angular_velocity_pub_;
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+    std::shared_ptr<tf2_ros::Buffer> tf_buffer_yaw_;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
     std::deque<double> roll_history_;
