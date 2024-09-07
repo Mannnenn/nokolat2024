@@ -157,10 +157,12 @@ private:
             if (mode_change_flag)
             {
                 get_target_altitude();
+                get_target_throttle();
             }
             auto_turning_control();
-            RCLCPP_INFO(this->get_logger(), "target_altitude[%f]", auto_turning_target.altitude_target);
-            // RCLCPP_INFO(this->get_logger(), "AUTO_TURNING");
+            // RCLCPP_INFO(this->get_logger(), "target_altitude[%f]", auto_turning_target.altitude_target);
+            // RCLCPP_INFO(this->get_logger(), "target_throttle[%f]", auto_turning_target.throttle_target);
+            //  RCLCPP_INFO(this->get_logger(), "AUTO_TURNING");
         }
 
         if (control_mode_ == nokolat2024::main_control::control_mode_map.at(nokolat2024::main_control::CONTROL_MODE::AUTO_EIGHT))
@@ -227,6 +229,32 @@ private:
     void auto_eight_control()
     {
         // 制御値を計算
+        double throttle = auto_turning_target.throttle_target;
+        double elevator = neutral_position_.elevator + auto_turning_gain.elevator_gain * (auto_turning_target.altitude_target - pose_received_.z);
+        double aileron_r = neutral_position_.aileron_r + auto_turning_gain.aileron_gain * (auto_turning_target.roll_target - pose_received_.roll);
+        double aileron_l = neutral_position_.aileron_l + auto_turning_gain.aileron_gain * (auto_turning_target.roll_target - pose_received_.roll);
+        double rudder;
+
+        // ラダーの制御値を遅延させる
+        if (auto_turning_delay.delay_rudder_counter > auto_turning_delay.delay_rudder)
+        {
+            rudder = auto_turning_target.rudder_target;
+        }
+        else
+        {
+            auto_turning_delay.delay_rudder_counter++;
+            rudder = neutral_position_.rudder;
+        }
+
+        // 制御値を送信
+        nokolat2024_msg::msg::Command command;
+        command.throttle = cutoff_min_max(throttle, config.throttle_min, config.throttle_max);
+        command.elevator = cutoff_min_max(elevator, config.elevator_min, config.elevator_max);
+        command.aileron_r = cutoff_min_max(aileron_r, config.aileron_min_r, config.aileron_max_r);
+        command.aileron_l = cutoff_min_max(aileron_l, config.aileron_min_l, config.aileron_max_l);
+        command.rudder = cutoff_min_max(rudder, config.rudder_min, config.rudder_max);
+        command.dropping_device = config.drop_min; // ドロップ装置は常に閉じておく
+        command_publisher_->publish(command);
     }
 
     double cutoff_min_max(double value, double min, double max)
@@ -250,6 +278,40 @@ private:
         auto_turning_target.altitude_target = std::accumulate(altitude_history_.begin(), altitude_history_.end(), 0.0) / altitude_history_.size();
     }
 
+    void get_target_throttle()
+    {
+        auto_turning_target.throttle_target = std::accumulate(throttle_history_.begin(), throttle_history_.end(), 0.0) / throttle_history_.size();
+    }
+
+    void get_turning_count(double turning_count_range)
+    {
+        if (count_start_flag)
+        {
+            count_start_flag = false;
+            count_start_yaw = pose_received_.yaw;
+        }
+
+        yaw_history_.push_back(pose_received_.yaw);
+        // Gwt yaw difference,plus or minus
+
+        double yaw_diff = 0;
+
+        if (yaw_history_.size() > 10)
+        {
+            for (int i = 0; i < yaw_history_.size(); i++)
+            {
+                // 前の姿勢角との差を計算し、値が正なら右旋回、負なら左旋回と判断
+                yaw_diff += yaw_history_[i] - yaw_history_[i - 1];
+            }
+        }
+
+        if (pose_received_.yaw - count_start_yaw > turning_count_range) // 周回判断としてyawが一周以上変化したらカウント、８の字のときは3/4周でカウント
+        {
+            count_start_flag = true;
+            count++;
+        }
+    }
+
     // 制御情報を格納
     nokolat2024::main_control::ControlInfo_config config;
     nokolat2024::main_control::ControlInfo_gain auto_turning_gain;
@@ -269,6 +331,7 @@ private:
 
     std::deque<double> altitude_history_;
     std::deque<double> throttle_history_;
+    std::deque<double> yaw_history_;
 
     rclcpp::Subscription<nokolat2024_msg::msg::Command>::SharedPtr neutral_position_subscriber_;
     rclcpp::Subscription<nokolat2024_msg::msg::Command>::SharedPtr command_explicit_subscriber_;
