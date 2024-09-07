@@ -106,6 +106,10 @@ ament_target_dependencies(get_neutral_position rclcpp nokolat2024_msg)
 add_executable(send_command src/send_command.cpp)
 ament_target_dependencies(send_command rclcpp nokolat2024_msg geometry_msgs)
 
+add_executable(path_generator src/path_generator.cpp)
+ament_target_dependencies(path_generator rclcpp geometry_msgs tf2_ros)
+target_link_libraries(path_generator Eigen3::Eigen)
+
 install(TARGETS
   tf_publisher
   image_diff_extraction
@@ -122,6 +126,7 @@ install(TARGETS
   main_control
   get_neutral_position
   send_command
+  path_generator
   DESTINATION lib/${PROJECT_NAME})
 
 

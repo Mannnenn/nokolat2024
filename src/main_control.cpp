@@ -7,6 +7,7 @@ public:
     {
         // パラメータの宣言
         this->declare_parameter<std::string>("input_neutral_position_topic_name", "/neutral_position"); // パラメータの宣言
+        this->declare_parameter<std::string>("input_command_explicit_topic_name", "/command_explicit");
         this->declare_parameter<std::string>("input_mode_topic_name", "/mode");
         this->declare_parameter<std::string>("input_angular_topic_name", "/rpy");
         this->declare_parameter<std::string>("input_altitude_stamped_topic_name", "/altitude");
@@ -15,6 +16,8 @@ public:
         // パラメータの取得
         std::string input_neutral_position_topic_name;
         this->get_parameter("input_neutral_position_topic_name", input_neutral_position_topic_name);
+        std::string input_command_explicit_topic_name;
+        this->get_parameter("input_command_explicit_topic_name", input_command_explicit_topic_name);
         std::string input_mode_topic_name;
         this->get_parameter("input_mode_topic_name", input_mode_topic_name);
         std::string input_angular_topic_name;
@@ -26,6 +29,8 @@ public:
 
         // SubscriberとPublisherの設定
         neutral_position_subscriber_ = this->create_subscription<nokolat2024_msg::msg::Command>(input_neutral_position_topic_name, 10, std::bind(&MainControlNode::neutral_position_callback, this, std::placeholders::_1));
+
+        command_explicit_subscriber_ = this->create_subscription<nokolat2024_msg::msg::Command>(input_command_explicit_topic_name, 10, std::bind(&MainControlNode::neutral_position_callback, this, std::placeholders::_1));
 
         mode_subscriber_ = this->create_subscription<std_msgs::msg::String>(input_mode_topic_name, 10, std::bind(&MainControlNode::mode_callback, this, std::placeholders::_1));
 
@@ -99,9 +104,11 @@ public:
 
         RCLCPP_INFO(this->get_logger(), "get target parameter");
 
-        delay_window = control_info_config_["auto_turning"]["delay"]["rudder"].as<int>();
+        auto_turning_delay.delay_rudder = control_info_config_["auto_turning"]["delay"]["rudder"].as<uint>();
 
         RCLCPP_INFO(this->get_logger(), "get delay window parameter");
+
+        last_mode = nokolat2024::main_control::MANUAL;
     }
 
 private:
@@ -114,9 +121,28 @@ private:
         neutral_position_.rudder = msg->rudder;
     }
 
+    void command_explicit_callback(const nokolat2024_msg::msg::Command::SharedPtr msg)
+    {
+        throttle_history_.push_back(msg->throttle);
+        if (throttle_history_.size() > 10)
+        {
+            throttle_history_.pop_front();
+        }
+    }
+
     void mode_callback(const std_msgs::msg::String::SharedPtr msg)
     {
         control_mode_ = msg->data;
+
+        if (last_mode != control_mode_)
+        {
+            mode_change_flag = true;
+        }
+        else
+        {
+            mode_change_flag = false;
+        }
+        last_mode = control_mode_;
     }
 
     void rpy_callback(const nokolat2024_msg::msg::Rpy::SharedPtr msg)
@@ -128,7 +154,12 @@ private:
 
         if (control_mode_ == nokolat2024::main_control::control_mode_map.at(nokolat2024::main_control::CONTROL_MODE::AUTO_TURNING))
         {
+            if (mode_change_flag)
+            {
+                get_target_altitude();
+            }
             auto_turning_control();
+            RCLCPP_INFO(this->get_logger(), "target_altitude[%f]", auto_turning_target.altitude_target);
             // RCLCPP_INFO(this->get_logger(), "AUTO_TURNING");
         }
 
@@ -154,6 +185,12 @@ private:
     void altitude_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg)
     {
         pose_received_.z = msg->point.z;
+        altitude_history_.push_back(pose_received_.z);
+        // 自動旋回に入る直前の高度を記録、それを基準にして目標高度を決定
+        if (altitude_history_.size() > 10)
+        {
+            altitude_history_.pop_front();
+        }
     }
 
     void auto_turning_control()
@@ -166,13 +203,13 @@ private:
         double rudder;
 
         // ラダーの制御値を遅延させる
-        if (delay_count > 100)
+        if (auto_turning_delay.delay_rudder_counter > auto_turning_delay.delay_rudder)
         {
             rudder = auto_turning_target.rudder_target;
         }
         else
         {
-            delay_count++;
+            auto_turning_delay.delay_rudder_counter++;
             rudder = neutral_position_.rudder;
         }
 
@@ -208,10 +245,16 @@ private:
         }
     }
 
+    void get_target_altitude()
+    {
+        auto_turning_target.altitude_target = std::accumulate(altitude_history_.begin(), altitude_history_.end(), 0.0) / altitude_history_.size();
+    }
+
     // 制御情報を格納
     nokolat2024::main_control::ControlInfo_config config;
     nokolat2024::main_control::ControlInfo_gain auto_turning_gain;
     nokolat2024::main_control::ControlInfo_target auto_turning_target;
+    nokolat2024::main_control::DelayWindow auto_turning_delay;
 
     nokolat2024::main_control::Pose pose_received_;
     nokolat2024::main_control::Command neutral_position_;
@@ -221,10 +264,14 @@ private:
 
     std::string control_mode_;
 
-    int delay_window;
-    int delay_count = 0;
+    bool mode_change_flag = false;
+    std::string last_mode;
+
+    std::deque<double> altitude_history_;
+    std::deque<double> throttle_history_;
 
     rclcpp::Subscription<nokolat2024_msg::msg::Command>::SharedPtr neutral_position_subscriber_;
+    rclcpp::Subscription<nokolat2024_msg::msg::Command>::SharedPtr command_explicit_subscriber_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr mode_subscriber_;
     rclcpp::Subscription<nokolat2024_msg::msg::Rpy>::SharedPtr rpy_subscriber_;
     rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr altitude_subscriber_;

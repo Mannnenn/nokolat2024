@@ -3,6 +3,7 @@
 #include <string>
 #include <yaml-cpp/yaml.h>
 #include <unordered_map>
+#include <deque>
 
 #include "std_msgs/msg/string.hpp"
 #include "geometry_msgs/msg/point_stamped.hpp"
@@ -85,6 +86,12 @@ namespace nokolat2024
             double pitch;
             double yaw;
             double z;
+        };
+
+        struct DelayWindow
+        {
+            uint delay_rudder;
+            uint delay_rudder_counter;
         };
     } // namespace main_control
 } // namespace nokolat2024

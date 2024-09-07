@@ -1,8 +1,8 @@
 control_info_config:
   chassis:
     throttle:
-      max: 1000
-      min: 2000
+      max: 800
+      min: 368
     elevator:
       max: 1680
       min: 368
@@ -30,7 +30,7 @@ control_info_config:
     target:
       altitude: 3.0
       roll: 0.0
-      throttle: 500
+      throttle: 350
       rudder: 1200
     delay:
-      rudder: 100
+      rudder: 30
