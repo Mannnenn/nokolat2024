@@ -283,32 +283,85 @@ private:
         auto_turning_target.throttle_target = std::accumulate(throttle_history_.begin(), throttle_history_.end(), 0.0) / throttle_history_.size();
     }
 
-    void get_turning_count(double turning_count_range)
+    void get_turning_count()
     {
+        double yaw_diff = 0;
+        double yaw_offset = pose_received_.yaw + yaw_offset_flag * 2 * M_PI;
+
         if (count_start_flag)
         {
             count_start_flag = false;
-            count_start_yaw = pose_received_.yaw;
+            count_start_yaw = yaw_offset;
         }
 
-        yaw_history_.push_back(pose_received_.yaw);
-        // Gwt yaw difference,plus or minus
+        yaw_history_.push_back(yaw_offset);
 
-        double yaw_diff = 0;
-
-        if (yaw_history_.size() > 10)
+        if (yaw_history_.size() > 2)
         {
-            for (int i = 0; i < yaw_history_.size(); i++)
+            for (size_t i = 1; i < yaw_history_.size(); i++)
             {
-                // 前の姿勢角との差を計算し、値が正なら右旋回、負なら左旋回と判断
                 yaw_diff += yaw_history_[i] - yaw_history_[i - 1];
             }
         }
 
-        if (pose_received_.yaw - count_start_yaw > turning_count_range) // 周回判断としてyawが一周以上変化したらカウント、８の字のときは3/4周でカウント
+        if (yaw_diff > 0) // 右旋回の場合
         {
-            count_start_flag = true;
-            count++;
+            if (pose_received_.yaw > M_PI - yaw_delta)
+            {
+                yaw_offset_flag = 1;
+            }
+        }
+        else // 左旋回の場合
+        {
+            if (pose_received_.yaw < -M_PI + yaw_delta)
+            {
+                yaw_offset_flag = -1;
+            }
+        }
+
+        if (yaw_history_.size() > 30)
+        {
+            yaw_history_.pop_front();
+        }
+
+        if (yaw_offset_flag == 1)
+        {
+            if (count_start_yaw + turning_count_range + 2 * M_PI - yaw_delta < yaw_offset && yaw_offset < count_start_yaw + turning_count_range + 2 * M_PI + yaw_delta)
+            {
+                turning_count++;
+                count_start_yaw = pose_received_.yaw;
+                yaw_history_.clear();
+            }
+        }
+        else if (yaw_offset_flag == -1)
+        {
+            if (count_start_yaw - turning_count_range - 2 * M_PI - yaw_delta < yaw_offset && yaw_offset < count_start_yaw - turning_count_range - 2 * M_PI + yaw_delta)
+            {
+                turning_count++;
+                count_start_yaw = pose_received_.yaw;
+                yaw_history_.clear();
+            }
+        }
+        else
+        {
+            if (yaw_diff > 0)
+            {
+                if (count_start_yaw + turning_count_range - yaw_delta < yaw_offset && yaw_offset < count_start_yaw + turning_count_range + yaw_delta)
+                {
+                    turning_count++;
+                    count_start_yaw = pose_received_.yaw;
+                    yaw_history_.clear();
+                }
+            }
+            else
+            {
+                if (count_start_yaw - turning_count_range - yaw_delta < yaw_offset && yaw_offset < count_start_yaw - turning_count_range + yaw_delta)
+                {
+                    turning_count++;
+                    count_start_yaw = pose_received_.yaw;
+                    yaw_history_.clear();
+                }
+            }
         }
     }
 
@@ -332,6 +385,13 @@ private:
     std::deque<double> altitude_history_;
     std::deque<double> throttle_history_;
     std::deque<double> yaw_history_;
+
+    constexpr static double yaw_delta = 0.05 * M_PI;
+    bool count_start_flag = true;
+    int yaw_offset_flag = 0;
+    double count_start_yaw = 0;
+    double turning_count_range = 1.75 * M_PI;
+    uint turning_count = 0;
 
     rclcpp::Subscription<nokolat2024_msg::msg::Command>::SharedPtr neutral_position_subscriber_;
     rclcpp::Subscription<nokolat2024_msg::msg::Command>::SharedPtr command_explicit_subscriber_;

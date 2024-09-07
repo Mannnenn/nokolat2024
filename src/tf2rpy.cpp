@@ -127,9 +127,9 @@ private:
         // 　中心差分法で角速度を計算
         if (roll_history_.size() > 3)
         {
-            double roll_diff = angle_diff((roll_history_[2] - roll_history_[0])) / (2 * diff.seconds());
-            double pitch_diff = angle_diff((pitch_history_[2] - pitch_history_[0])) / (2 * diff.seconds());
-            double yaw_diff = angle_diff((yaw_history_[2] - yaw_history_[0])) / (2 * diff.seconds());
+            double roll_diff = angle_diff(roll_history_[2], roll_history_[0]) / (2 * diff.seconds());
+            double pitch_diff = angle_diff(pitch_history_[2], pitch_history_[0]) / (2 * diff.seconds());
+            double yaw_diff = angle_diff(yaw_history_[2], yaw_history_[0]) / (2 * diff.seconds());
 
             // RCLCPP_INFO(this->get_logger(), "roll_diff: %f, pitch_diff: %f, yaw_diff: %f", roll_diff, pitch_diff, yaw_diff);
 
