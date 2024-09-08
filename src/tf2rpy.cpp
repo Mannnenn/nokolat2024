@@ -7,6 +7,7 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
 #include <geometry_msgs/msg/transform_stamped.hpp>
+#include "std_msgs/msg/float32.hpp"
 
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
@@ -52,6 +53,18 @@ public:
 
         rpy_pub_ = this->create_publisher<nokolat2024_msg::msg::Rpy>(output_angular_topic_name, 10);
         angular_velocity_pub_ = this->create_publisher<nokolat2024_msg::msg::Rpy>(output_angular_velocity_topic_name, 10);
+
+        RCLCPP_INFO(this->get_logger(), "tf_2_rpy_node has been started.");
+
+        rclcpp::QoS qos_settings(10);
+        qos_settings.reliable();
+
+        roll_pub_ = this->create_publisher<std_msgs::msg::Float32>("/roll", qos_settings);
+        pitch_pub_ = this->create_publisher<std_msgs::msg::Float32>("/pitch", qos_settings);
+        yaw_pub_ = this->create_publisher<std_msgs::msg::Float32>("/yaw", qos_settings);
+        roll_speed_pub_ = this->create_publisher<std_msgs::msg::Float32>("/roll_speed", qos_settings);
+        pitch_speed_pub_ = this->create_publisher<std_msgs::msg::Float32>("/pitch_speed", qos_settings);
+        yaw_speed_pub_ = this->create_publisher<std_msgs::msg::Float32>("/yaw_speed", qos_settings);
     }
 
 private:
@@ -107,6 +120,18 @@ private:
         rpy_msg.pitch = pitch;
         rpy_msg.yaw = yaw_yaw;
 
+        std_msgs::msg::Float32 roll_msg;
+        roll_msg.data = roll;
+        roll_pub_->publish(roll_msg);
+
+        std_msgs::msg::Float32 pitch_msg;
+        pitch_msg.data = pitch;
+        pitch_pub_->publish(pitch_msg);
+
+        std_msgs::msg::Float32 yaw_msg;
+        yaw_msg.data = yaw_yaw;
+        yaw_pub_->publish(yaw_msg);
+
         // パブリッシュ
         rpy_pub_->publish(rpy_msg);
 
@@ -132,6 +157,18 @@ private:
             double yaw_diff = angle_diff(yaw_history_[2], yaw_history_[0]) / (2 * diff.seconds());
 
             // RCLCPP_INFO(this->get_logger(), "roll_diff: %f, pitch_diff: %f, yaw_diff: %f", roll_diff, pitch_diff, yaw_diff);
+
+            std_msgs::msg::Float32 roll_speed_msg;
+            roll_speed_msg.data = roll_diff * 1000;
+            roll_speed_pub_->publish(roll_speed_msg);
+
+            std_msgs::msg::Float32 pitch_speed_msg;
+            pitch_speed_msg.data = pitch_diff * 1000;
+            pitch_speed_pub_->publish(pitch_speed_msg);
+
+            std_msgs::msg::Float32 yaw_speed_msg;
+            yaw_speed_msg.data = yaw_diff * 1000;
+            yaw_speed_pub_->publish(yaw_speed_msg);
 
             // 履歴を削除
             roll_history_.pop_front();
@@ -161,6 +198,13 @@ private:
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Publisher<nokolat2024_msg::msg::Rpy>::SharedPtr rpy_pub_;
     rclcpp::Publisher<nokolat2024_msg::msg::Rpy>::SharedPtr angular_velocity_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr roll_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr pitch_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr yaw_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr roll_speed_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr pitch_speed_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr yaw_speed_pub_;
+
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_yaw_;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;

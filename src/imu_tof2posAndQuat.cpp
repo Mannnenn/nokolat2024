@@ -8,6 +8,8 @@
 #include "geometry_msgs/msg/pose.hpp"
 #include "geometry_msgs/msg/quaternion.hpp"
 
+#include <deque>
+
 class ImuToF2PoseQuat : public rclcpp::Node
 {
 public:
@@ -55,7 +57,13 @@ private:
         geometry_msgs::msg::PointStamped pose;
         pose.header.frame_id = "base_link";
         pose.header.stamp = this->now();
-        pose.point.z = calculate_vertical_distance(raw_z, roll, pitch);
+        z_history_.push_back(calculate_vertical_distance(raw_z, roll, pitch));
+        if (z_history_.size() > 150)
+        {
+            z_history_.pop_front();
+        }
+        pose.point.z = std::accumulate(z_history_.begin(), z_history_.end(), 0.0) / z_history_.size();
+
         publisher_point_stamped_->publish(pose);
     }
 
@@ -69,6 +77,8 @@ private:
     rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr imu_subscriber_;
     rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr publisher_point_stamped_;
     rclcpp::Publisher<geometry_msgs::msg::Quaternion>::SharedPtr publisher_quaternion_;
+
+    std::deque<double> z_history_;
 };
 
 int main(int argc, char *argv[])

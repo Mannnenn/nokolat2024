@@ -11,6 +11,8 @@
 #include "nokolat2024_msg/msg/rpy.hpp"
 #include "nokolat2024_msg/msg/command.hpp"
 
+#include "std_msgs/msg/float32.hpp"
+
 #ifndef MAIN_CONTROL_HPP
 #define MAIN_CONTROL_HPP
 
@@ -58,6 +60,7 @@ namespace nokolat2024
             double throttle_gain;
             double elevator_gain;
             double aileron_gain;
+            double pitch_gain;
         };
 
         struct ControlInfo_target

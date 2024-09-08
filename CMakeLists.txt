@@ -91,7 +91,7 @@ add_executable(recive_command src/recive_command.cpp)
 ament_target_dependencies(recive_command rclcpp  geometry_msgs nokolat2024_msg)
 
 add_executable(tf2rpy src/tf2rpy.cpp)
-ament_target_dependencies(tf2rpy rclcpp  geometry_msgs tf2_ros nokolat2024_msg)
+ament_target_dependencies(tf2rpy rclcpp  geometry_msgs std_msgs tf2_ros nokolat2024_msg)
 
 add_executable(imu_tof2posAndQuat src/imu_tof2posAndQuat.cpp)
 ament_target_dependencies(imu_tof2posAndQuat rclcpp  geometry_msgs tf2_ros)
