@@ -110,6 +110,9 @@ add_executable(path_generator src/path_generator.cpp)
 ament_target_dependencies(path_generator rclcpp geometry_msgs tf2_ros)
 target_link_libraries(path_generator Eigen3::Eigen)
 
+add_executable(rotation_counter src/rotation_counter.cpp)
+ament_target_dependencies(rotation_counter rclcpp std_msgs nokolat2024_msg)
+
 install(TARGETS
   tf_publisher
   image_diff_extraction
@@ -127,6 +130,7 @@ install(TARGETS
   get_neutral_position
   send_command
   path_generator
+  rotation_counter
   DESTINATION lib/${PROJECT_NAME})
 
 

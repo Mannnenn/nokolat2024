@@ -31,6 +31,8 @@
     <arg name="propo_explicit" default="/onboard/propo_explicit" />
     <arg name="mode" default="/onboard/mode" />
     <arg name="neutral_position" default="/onboard/neutral_position" />
+    <arg name="counter_reset" default="/onboard/rotation_counter_reset" />
+    <arg name="rotation_counter" default="/onboard/rotation_counter" />
 
     <!-- 機体角の制御用のトピック名 -->
     <arg name="rpy_angular" default="/onboard/rpy_angular" />
@@ -138,6 +140,13 @@
         <node pkg="nokolat2024" exec="tf2rpy" name="tf2rpy" output="screen">
             <param name="output_angular_topic_name" value="$(var rpy_angular)" />
             <param name="output_angular_velocity_topic_name" value="$(var rpy_angular_speed)" />
+        </node>
+
+        <node pkg="nokolat2024" exec="rotation_counter" name="rotation_counter" output="screen">
+            <param name="input_angular_topic_name" value="$(var rpy_angular)" />
+            <param name="input_angular_velocity_topic_name" value="$(var rpy_angular_speed)" />
+            <param name="input_counter_reset_topic_name" value="$(var counter_reset)" />
+            <param name="output_rotation_counter_topic_name" value="$(var rotation_counter)" />
         </node>
 
         <node pkg="nokolat2024" exec="main_control" name="main_control" output="screen">
