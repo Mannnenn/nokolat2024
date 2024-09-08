@@ -149,7 +149,12 @@ private:
 
     void counter_reset_callback(const std_msgs::msg::Float32::SharedPtr msg)
     {
-        is_first_counter_ = true;
+        if (msg->data == 1)
+        {
+            RCLCPP_INFO(this->get_logger(), "Reset counter");
+            rotation_counter_ = 0;
+            is_first_counter_ = true;
+        }
     }
 
     rclcpp::Subscription<nokolat2024_msg::msg::Rpy>::SharedPtr rpy_subscriber_;
