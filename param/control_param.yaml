@@ -26,11 +26,29 @@ control_info_config:
       elevator:
         p: 10
       aileron:
-        p: 200
+        p: 800
     target:
       altitude: 3.0
       roll: 0.0
       throttle: 350
       rudder: 1200
+    delay:
+      rudder: 30
+
+  eight_turning:
+    gain:
+      elevator:
+        p: 10
+      aileron:
+        p: 800
+    target:
+      altitude: 3.0
+      roll:
+        l: 0.0
+        r: 0.0
+      throttle: 350
+      rudder:
+        l: 300
+        r: 300
     delay:
       rudder: 30

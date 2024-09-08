@@ -143,6 +143,7 @@
         <node pkg="nokolat2024" exec="main_control" name="main_control" output="screen">
             <param name="yaml_control_config" value="$(var control_param)" />
             <param name="input_neutral_position_topic_name" value="$(var neutral_position)" />
+            <param name="input_command_explicit_topic_name" value="$(var propo_explicit)" />
             <param name="input_mode_topic_name" value="$(var mode)" />
             <param name="input_angular_topic_name" value="$(var rpy_angular)" />
             <param name="input_altitude_stamped_topic_name" value="$(var altitude)" />

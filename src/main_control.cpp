@@ -94,6 +94,9 @@ public:
         auto_turning_gain.elevator_gain = control_info_config_["auto_turning"]["gain"]["elevator"]["p"].as<double>();
         auto_turning_gain.aileron_gain = control_info_config_["auto_turning"]["gain"]["aileron"]["p"].as<double>();
 
+        eight_turning_gain.elevator_gain = control_info_config_["eight_turning"]["gain"]["elevator"]["p"].as<double>();
+        eight_turning_gain.aileron_gain = control_info_config_["eight_turning"]["gain"]["aileron"]["p"].as<double>();
+
         RCLCPP_INFO(this->get_logger(), "get gain parameter");
 
         // 制御目標値を取得
@@ -102,9 +105,18 @@ public:
         auto_turning_target.throttle_target = control_info_config_["auto_turning"]["target"]["throttle"].as<double>();
         auto_turning_target.rudder_target = control_info_config_["auto_turning"]["target"]["rudder"].as<double>();
 
+        eight_turning_target.altitude_target = control_info_config_["eight_turning"]["target"]["altitude"].as<double>();
+        eight_turning_target.roll_target_l = control_info_config_["eight_turning"]["target"]["roll"]["l"].as<double>();
+        eight_turning_target.roll_target_r = control_info_config_["eight_turning"]["target"]["roll"]["r"].as<double>();
+        eight_turning_target.throttle_target = control_info_config_["eight_turning"]["target"]["throttle"].as<double>();
+        eight_turning_target.rudder_target_l = control_info_config_["eight_turning"]["target"]["rudder"]["l"].as<double>();
+        eight_turning_target.rudder_target_r = control_info_config_["eight_turning"]["target"]["rudder"]["r"].as<double>();
+
         RCLCPP_INFO(this->get_logger(), "get target parameter");
 
         auto_turning_delay.delay_rudder = control_info_config_["auto_turning"]["delay"]["rudder"].as<uint>();
+
+        eight_turning_delay.delay_rudder = control_info_config_["eight_turning"]["delay"]["rudder"].as<uint>();
 
         RCLCPP_INFO(this->get_logger(), "get delay window parameter");
 
@@ -127,6 +139,7 @@ private:
         if (throttle_history_.size() > 10)
         {
             throttle_history_.pop_front();
+            RCLCPP_INFO(this->get_logger(), "throttle_history_.size() > 10");
         }
     }
 
@@ -156,17 +169,25 @@ private:
         {
             if (mode_change_flag)
             {
+                auto_turning_target.throttle_target = 692;
+
                 get_target_altitude();
-                get_target_throttle();
             }
             auto_turning_control();
             // RCLCPP_INFO(this->get_logger(), "target_altitude[%f]", auto_turning_target.altitude_target);
             // RCLCPP_INFO(this->get_logger(), "target_throttle[%f]", auto_turning_target.throttle_target);
-            //  RCLCPP_INFO(this->get_logger(), "AUTO_TURNING");
+            //   RCLCPP_INFO(this->get_logger(), "AUTO_TURNING");
         }
 
         if (control_mode_ == nokolat2024::main_control::control_mode_map.at(nokolat2024::main_control::CONTROL_MODE::AUTO_EIGHT))
         {
+            if (mode_change_flag)
+            {
+                get_target_altitude();
+                auto_turning_target.throttle_target = 692;
+                turning_count = 0;
+                turning_count_range = 3 / 2 * M_PI; // 270deg回ったら旋回方向を変更
+            }
             auto_eight_control();
             // RCLCPP_INFO(this->get_logger(), "AUTO_EIGHT");
         }
@@ -199,9 +220,9 @@ private:
     {
         // 制御値を計算
         double throttle = auto_turning_target.throttle_target;
-        double elevator = neutral_position_.elevator + auto_turning_gain.elevator_gain * (auto_turning_target.altitude_target - pose_received_.z);
-        double aileron_r = neutral_position_.aileron_r + auto_turning_gain.aileron_gain * (auto_turning_target.roll_target - pose_received_.roll);
-        double aileron_l = neutral_position_.aileron_l + auto_turning_gain.aileron_gain * (auto_turning_target.roll_target - pose_received_.roll);
+        double elevator = neutral_position_.elevator + auto_turning_gain.elevator_gain * (pose_received_.z - auto_turning_target.altitude_target);
+        double aileron_l = neutral_position_.aileron_l + auto_turning_gain.aileron_gain * (pose_received_.roll - auto_turning_target.roll_target);
+        double aileron_r = neutral_position_.aileron_r + auto_turning_gain.aileron_gain * (pose_received_.roll - auto_turning_target.roll_target);
         double rudder;
 
         // ラダーの制御値を遅延させる
@@ -228,23 +249,64 @@ private:
 
     void auto_eight_control()
     {
-        // 制御値を計算
-        double throttle = auto_turning_target.throttle_target;
-        double elevator = neutral_position_.elevator + auto_turning_gain.elevator_gain * (auto_turning_target.altitude_target - pose_received_.z);
-        double aileron_r = neutral_position_.aileron_r + auto_turning_gain.aileron_gain * (auto_turning_target.roll_target - pose_received_.roll);
-        double aileron_l = neutral_position_.aileron_l + auto_turning_gain.aileron_gain * (auto_turning_target.roll_target - pose_received_.roll);
+        double throttle;
+        double elevator;
+        double aileron_r;
+        double aileron_l;
         double rudder;
 
-        // ラダーの制御値を遅延させる
-        if (auto_turning_delay.delay_rudder_counter > auto_turning_delay.delay_rudder)
+        if (turning_count == 0)
         {
-            rudder = auto_turning_target.rudder_target;
+            get_turning_count();
+
+            // 左旋回
+            // 制御値を計算
+            throttle = eight_turning_target.throttle_target;
+            elevator = neutral_position_.elevator + eight_turning_gain.elevator_gain * (eight_turning_target.altitude_target - pose_received_.z);
+            aileron_r = neutral_position_.aileron_r + eight_turning_gain.aileron_gain * (eight_turning_target.roll_target_l - pose_received_.roll); // 左旋回時用のパラメーター
+            aileron_l = neutral_position_.aileron_l + eight_turning_gain.aileron_gain * (eight_turning_target.roll_target_l - pose_received_.roll);
+
+            // ラダーの制御値を遅延させる
+            if (eight_turning_delay.delay_rudder_counter > eight_turning_delay.delay_rudder)
+            {
+                rudder = eight_turning_target.rudder_target;
+            }
+            else
+            {
+                eight_turning_delay.delay_rudder_counter++;
+                rudder = neutral_position_.rudder;
+            }
         }
-        else
+
+        if (turning_count == 1)
         {
-            auto_turning_delay.delay_rudder_counter++;
-            rudder = neutral_position_.rudder;
+            get_turning_count();
+
+            // 左旋回
+            // 制御値を計算
+            throttle = eight_turning_target.throttle_target;
+            elevator = neutral_position_.elevator + eight_turning_gain.elevator_gain * (eight_turning_target.altitude_target - pose_received_.z);
+            aileron_r = neutral_position_.aileron_r + eight_turning_gain.aileron_gain * (eight_turning_target.roll_target_l - pose_received_.roll); // 左旋回時用のパラメーター
+            aileron_l = neutral_position_.aileron_l + eight_turning_gain.aileron_gain * (eight_turning_target.roll_target_l - pose_received_.roll);
+
+            // ラダーの制御値を遅延させる
+            if (eight_turning_delay.delay_rudder_counter > eight_turning_delay.delay_rudder)
+            {
+                rudder = eight_turning_target.rudder_target;
+            }
+            else
+            {
+                eight_turning_delay.delay_rudder_counter++;
+                rudder = neutral_position_.rudder;
+            }
         }
+
+        // 水平に戻す turning_countが変化したら
+        if (turning_count != last_count)
+        {
+        }
+
+        last_count = turning_count;
 
         // 制御値を送信
         nokolat2024_msg::msg::Command command;
@@ -281,17 +343,23 @@ private:
     void get_target_throttle()
     {
         auto_turning_target.throttle_target = std::accumulate(throttle_history_.begin(), throttle_history_.end(), 0.0) / throttle_history_.size();
+        RCLCPP_INFO(this->get_logger(), "target_throttle[%f]", auto_turning_target.throttle_target);
     }
 
     void get_turning_count()
     {
         double yaw_diff = 0;
+        // 右回転でyawの値が増えると仮定
+        // 右回転で値マタギが発生したら2π足して値が連続になるようにしてカウントがうまく行くようにする
+        // 左回転で値マタギが発生したら2π引いて〃
+        // それ以外では補正しない
         double yaw_offset = pose_received_.yaw + yaw_offset_flag * 2 * M_PI;
 
         if (count_start_flag)
         {
             count_start_flag = false;
             count_start_yaw = yaw_offset;
+            printf("Get initialize \n");
         }
 
         yaw_history_.push_back(yaw_offset);
@@ -300,22 +368,25 @@ private:
         {
             for (size_t i = 1; i < yaw_history_.size(); i++)
             {
+                // 新しいデータから古いデータを引いてyawの変化方向を知る
                 yaw_diff += yaw_history_[i] - yaw_history_[i - 1];
+                printf("差分:%f \n", yaw_diff);
             }
-        }
-
-        if (yaw_diff > 0) // 右旋回の場合
-        {
-            if (pose_received_.yaw > M_PI - yaw_delta)
+            if (yaw_diff > 0) // 右旋回の場合増加
             {
-                yaw_offset_flag = 1;
+                if (pose_received_.yaw > M_PI - yaw_delta)
+                {
+                    yaw_offset_flag = 1; // 2π
+                    printf("右旋回で値またぎが発生した場合 \n");
+                }
             }
-        }
-        else // 左旋回の場合
-        {
-            if (pose_received_.yaw < -M_PI + yaw_delta)
+            else // 左旋回の場合減少
             {
-                yaw_offset_flag = -1;
+                if (pose_received_.yaw < -M_PI + yaw_delta)
+                {
+                    yaw_offset_flag = -1; //-2π
+                    printf("左旋回で値またぎが発生した場合 \n");
+                }
             }
         }
 
@@ -326,40 +397,48 @@ private:
 
         if (yaw_offset_flag == 1)
         {
+            // 右旋回だから初期の値からカウント判断値分増加したら旋回1回分。履歴クリア、カウント角度更新。値マタギがあるので2π分足す。⊿分幅をもたせる
             if (count_start_yaw + turning_count_range + 2 * M_PI - yaw_delta < yaw_offset && yaw_offset < count_start_yaw + turning_count_range + 2 * M_PI + yaw_delta)
             {
                 turning_count++;
                 count_start_yaw = pose_received_.yaw;
                 yaw_history_.clear();
+                printf("右旋回で変な位置から始めた場合 \n");
             }
         }
         else if (yaw_offset_flag == -1)
         {
+            // 左旋回だから初期の値からカウント判断値分減少したら旋回1回分。履歴クリア、カウント角度更新。値マタギがあるので2π分引く。⊿分幅をもたせる
             if (count_start_yaw - turning_count_range - 2 * M_PI - yaw_delta < yaw_offset && yaw_offset < count_start_yaw - turning_count_range - 2 * M_PI + yaw_delta)
             {
                 turning_count++;
                 count_start_yaw = pose_received_.yaw;
                 yaw_history_.clear();
+                printf("左旋回で変な位置から始めた場合 \n");
             }
         }
         else
         {
             if (yaw_diff > 0)
             {
+                // 右旋回だから初期の値からカウント判断値分増加したら旋回1回分。履歴クリア、カウント角度更新。⊿分幅をもたせる
                 if (count_start_yaw + turning_count_range - yaw_delta < yaw_offset && yaw_offset < count_start_yaw + turning_count_range + yaw_delta)
                 {
                     turning_count++;
                     count_start_yaw = pose_received_.yaw;
                     yaw_history_.clear();
+                    printf("右旋回の場合 \n");
                 }
             }
             else
             {
+                // 左旋回だから初期の値からカウント判断値分減少したら旋回1回分。履歴クリア、カウント角度更新。⊿分幅をもたせる
                 if (count_start_yaw - turning_count_range - yaw_delta < yaw_offset && yaw_offset < count_start_yaw - turning_count_range + yaw_delta)
                 {
                     turning_count++;
                     count_start_yaw = pose_received_.yaw;
                     yaw_history_.clear();
+                    printf("右旋回の場合 \n");
                 }
             }
         }
@@ -367,9 +446,14 @@ private:
 
     // 制御情報を格納
     nokolat2024::main_control::ControlInfo_config config;
+
     nokolat2024::main_control::ControlInfo_gain auto_turning_gain;
     nokolat2024::main_control::ControlInfo_target auto_turning_target;
     nokolat2024::main_control::DelayWindow auto_turning_delay;
+
+    nokolat2024::main_control::ControlInfo_gain eight_turning_gain;
+    nokolat2024::main_control::ControlInfo_target_lr eight_turning_target;
+    nokolat2024::main_control::DelayWindow eight_turning_delay;
 
     nokolat2024::main_control::Pose pose_received_;
     nokolat2024::main_control::Command neutral_position_;
@@ -392,6 +476,7 @@ private:
     double count_start_yaw = 0;
     double turning_count_range = 1.75 * M_PI;
     uint turning_count = 0;
+    uint last_count;
 
     rclcpp::Subscription<nokolat2024_msg::msg::Command>::SharedPtr neutral_position_subscriber_;
     rclcpp::Subscription<nokolat2024_msg::msg::Command>::SharedPtr command_explicit_subscriber_;

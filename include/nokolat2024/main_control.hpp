@@ -70,6 +70,13 @@ namespace nokolat2024
             double rudder_target;
         };
 
+        struct ControlInfo_target_lr : public ControlInfo_target
+        {
+            double roll_target_l;
+            double roll_target_r;
+            double rudder_target_l;
+            double rudder_target_r;
+        };
         struct Command
         {
             double throttle;

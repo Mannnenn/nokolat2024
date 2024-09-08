@@ -135,33 +135,18 @@ private:
                 static_tf_broadcaster_->sendTransform(transform_stamped);
                 initial_alignment_done_ = true;
 
-                previous_orientation = *msg;
-
                 // RCLCPP_INFO(this->get_logger(), "IMU alignment completed.");
             }
         }
         else
         {
-            // クォータニオンの差が大きい場合は外れ値として扱う
-            if (!is_first_tf_pub_message)
+            // クォータニオンが外れ値でないかを確認
+            // 　仮定：z軸が上方向を向いている
+            if (!isZAxisUp(*msg))
             {
-                double diff = quaternion_difference(*msg, previous_orientation);
-                if (diff > QUATERNION_DIFF_THRESHOLD)
-                {
-                    // しきい値よりも、現在のフレームと前のフレームとの差の二乗和が大きい場合は外れ値として無視する
-                    // RCLCPP_WARN(this->get_logger(), "Detected outlier quaternion, ignoring this IMU message.");
-                    if (ignore > reset_lim)
-                    {
-                        ignore = 0;
-                    }
-                    else
-                    {
-                        ignore++;
-                        return;
-                    }
-                }
+                // RCLCPP_INFO(this->get_logger(), "Quaternion is invalid. Ignoring... %f", z_axis_.z());
+                return;
             }
-
             // パブリッシュする値と比較に使う値を更新
             tf2::Quaternion base_link_rotation, transformed_quaternion;
             base_link_rotation.setX(msg->x);
@@ -178,28 +163,29 @@ private:
             // 回転方向を逆にする
             orientation_.w = -transformed_quaternion.w();
 
-            previous_orientation = *msg;
-            is_first_tf_pub_message = false;
-
-            // 前のクォータニオンの値を更新
-            previous_orientation = *msg;
-
             send_tf();
         }
     }
 
     void altitude_stamped_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg)
     {
+        // 高度が負の値の場合は無視
+        if (msg->point.z < 0.0)
+        {
+            return;
+        }
         position_vector_.setZ(msg->point.z);
     }
 
-    double quaternion_difference(const geometry_msgs::msg::Quaternion &q1, const geometry_msgs::msg::Quaternion &q2)
+    // クォータニオンからz軸方向を取得する関数
+    bool isZAxisUp(const geometry_msgs::msg::Quaternion &q)
     {
-        return std::sqrt(
-            std::pow(q1.x - q2.x, 2) +
-            std::pow(q1.y - q2.y, 2) +
-            std::pow(q1.z - q2.z, 2) +
-            std::pow(q1.w - q2.w, 2));
+        tf2::Quaternion quat(q.x, q.y, q.z, q.w);
+        tf2::Matrix3x3 m(quat);
+        z_axis_ = m.getColumn(2); // z軸方向を取得
+
+        // z軸が上方向を向いているかを確認
+        return z_axis_.z() > 0;
     }
 
     void send_tf()
@@ -235,18 +221,7 @@ private:
     int sample_count_ = 0;
     bool first_callback = true;
 
-    // 最初のメッセージは外れ値として扱わない
-    bool is_first_tf_pub_message = true;
-
-    // 外れ値を検出するための閾値
-    const double QUATERNION_DIFF_THRESHOLD = 0.1;
-
-    // 外れ値除去された回数をカウントする
-    int ignore = 0;
-    int reset_lim = 60;
-
-    // 前のクォータニオンの値を保持する変数
-    geometry_msgs::msg::Quaternion previous_orientation;
+    tf2::Vector3 z_axis_;
 };
 
 int main(int argc, char **argv)
