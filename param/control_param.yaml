@@ -21,7 +21,7 @@ control_info_config:
       center: 1000
       min: 368
 
-  auto_turning:
+  auto_straight:
     gain:
       elevator:
         p: 400
@@ -30,27 +30,60 @@ control_info_config:
       pitch:
         p: 400
     target:
-      altitude: 3.0
       roll: 0.0
-      throttle: 350
-      rudder: 1200
-    delay:
-      rudder: 30
+
+  auto_turning:
+    left:
+      gain:
+        elevator:
+          p: 400
+        aileron:
+          p: 800
+        pitch:
+          p: 400
+      target:
+        roll: 0.0
+        rudder: 1200
+      delay:
+        rudder: 30
+    right:
+      gain:
+        elevator:
+          p: 400
+        aileron:
+          p: 800
+        pitch:
+          p: 400
+      target:
+        roll: 0.0
+        rudder: 1200
+      delay:
+        rudder: 30
 
   eight_turning:
-    gain:
-      elevator:
-        p: 10
-      aileron:
-        p: 800
-    target:
-      altitude: 3.0
-      roll:
-        l: 0.0
-        r: 0.0
-      throttle: 350
-      rudder:
-        l: 300
-        r: 300
-    delay:
-      rudder: 30
+    left:
+      gain:
+        elevator:
+          p: 400
+        aileron:
+          p: 800
+        pitch:
+          p: 400
+      target:
+        roll: 0.0
+        rudder: 1200
+      delay:
+        rudder: 30
+    right:
+      gain:
+        elevator:
+          p: 400
+        aileron:
+          p: 800
+        pitch:
+          p: 400
+      target:
+        roll: 0.0
+        rudder: 1200
+      delay:
+        rudder: 0.3

@@ -59,12 +59,12 @@ public:
         rclcpp::QoS qos_settings(10);
         qos_settings.reliable();
 
-        roll_pub_ = this->create_publisher<std_msgs::msg::Float32>("/roll", qos_settings);
-        pitch_pub_ = this->create_publisher<std_msgs::msg::Float32>("/pitch", qos_settings);
-        yaw_pub_ = this->create_publisher<std_msgs::msg::Float32>("/yaw", qos_settings);
-        roll_speed_pub_ = this->create_publisher<std_msgs::msg::Float32>("/roll_speed", qos_settings);
-        pitch_speed_pub_ = this->create_publisher<std_msgs::msg::Float32>("/pitch_speed", qos_settings);
-        yaw_speed_pub_ = this->create_publisher<std_msgs::msg::Float32>("/yaw_speed", qos_settings);
+        roll_pub_ = this->create_publisher<std_msgs::msg::Float32>("/ui/roll", qos_settings);
+        pitch_pub_ = this->create_publisher<std_msgs::msg::Float32>("/ui/pitch", qos_settings);
+        yaw_pub_ = this->create_publisher<std_msgs::msg::Float32>("/ui/yaw", qos_settings);
+        roll_speed_pub_ = this->create_publisher<std_msgs::msg::Float32>("/ui/roll_speed", qos_settings);
+        pitch_speed_pub_ = this->create_publisher<std_msgs::msg::Float32>("/ui/pitch_speed", qos_settings);
+        yaw_speed_pub_ = this->create_publisher<std_msgs::msg::Float32>("/ui/yaw_speed", qos_settings);
     }
 
 private:

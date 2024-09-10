@@ -36,7 +36,10 @@ public:
 
         rpy_subscriber_ = this->create_subscription<nokolat2024_msg::msg::Rpy>(input_angular_topic_name, qos, std::bind(&RotationCounterNode::rpy_callback, this, std::placeholders::_1));
         angular_velocity_subscriber_ = this->create_subscription<nokolat2024_msg::msg::Rpy>(input_angular_velocity_topic_name, qos, std::bind(&RotationCounterNode::angular_velocity_callback, this, std::placeholders::_1));
-        counter_reset_subscriber_ = this->create_subscription<std_msgs::msg::Float32>(input_counter_reset_topic_name, qos, std::bind(&RotationCounterNode::counter_reset_callback, this, std::placeholders::_1));
+
+        rclcpp::QoS qos_rest(200);
+        qos_rest.reliable();
+        counter_reset_subscriber_ = this->create_subscription<std_msgs::msg::Float32>(input_counter_reset_topic_name, qos_rest, std::bind(&RotationCounterNode::counter_reset_callback, this, std::placeholders::_1));
 
         RCLCPP_INFO(this->get_logger(), "rotation_counter_node has been started.");
 
@@ -49,7 +52,7 @@ public:
         lap_judgment_criteria = 0.1;
         count_duplication_time_judgment_criteria = 1.0;
 
-        rotation_standard = 2.0 * M_PI;
+        rotation_standard = 1 * 2 * M_PI; // 1 Rotation:2π [rad]
 
         rotation_direction_ = 0;
         last_time_ = this->now();
@@ -99,8 +102,7 @@ private:
         {
             rotation_counter_++;
             is_first_counter_ = true;
-            pub_counter();
-            RCLCPP_INFO(this->get_logger(), "Count up");
+            last_time_ = this->now();
         }
         // 回転方向が負かつ範囲内
         else if (rotation_direction_ == -1 &&
@@ -109,9 +111,10 @@ private:
         {
             rotation_counter_--;
             is_first_counter_ = true;
-            pub_counter();
-            RCLCPP_INFO(this->get_logger(), "Count down");
+            last_time_ = this->now();
         }
+
+        pub_counter();
 
         current_time = this->now();
         diff = current_time - last_time_for_several_rotate_;
@@ -137,8 +140,6 @@ private:
 
     void pub_counter()
     {
-        is_first_counter_ = true;
-        last_time_ = this->now();
 
         std_msgs::msg::Float32 rotation_counter_msg;
         rotation_counter_msg.data = rotation_counter_;
@@ -167,12 +168,9 @@ private:
 
     void counter_reset_callback(const std_msgs::msg::Float32::SharedPtr msg)
     {
-        if (msg->data == 1)
-        {
-            RCLCPP_INFO(this->get_logger(), "Reset counter");
-            rotation_counter_ = 0;
-            pub_counter();
-        }
+        rotation_standard = msg->data * 2 * M_PI; // dataは何回転で1つ出力するかを示す。
+        rotation_counter_ = 0;
+        pub_counter();
     }
 
     rclcpp::Subscription<nokolat2024_msg::msg::Rpy>::SharedPtr rpy_subscriber_;
