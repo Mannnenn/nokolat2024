@@ -478,7 +478,7 @@ private:
             if (turn_mode == nokolat2024::main_control::EIGHT_TURN_MODE::LEFT_TURN)
             {
                 turn_mode = nokolat2024::main_control::EIGHT_TURN_MODE::NEUTRAL;
-                get_horizontal_roll_time = get->now();
+                get_horizontal_roll_time = this->now();
                 eight_turning_target.l.roll_target = pose_received_.roll; // しばらくこの姿勢を維持
                 eight_turning_target.yaw_target = pose_received_.yaw;     // 直進する
             }
@@ -488,7 +488,7 @@ private:
             if (turn_mode == nokolat2024::main_control::EIGHT_TURN_MODE::RIGHT_TURN)
             {
                 turn_mode = nokolat2024::main_control::EIGHT_TURN_MODE::NEUTRAL;
-                get_horizontal_roll_time = get->now();
+                get_horizontal_roll_time = this->now();
                 eight_turning_target.l.roll_target = pose_received_.roll; // しばらくこの姿勢を維持
                 eight_turning_target.yaw_target = pose_received_.yaw;     // 直進する
             }
@@ -508,7 +508,7 @@ private:
             rclcpp::Duration dt = this->now() - rudder_delay_time;
             if (dt.seconds() < eight_turning_delay.l.delay_rudder) // 旋回司令が送られてから暫くまつ
             {
-                rudder = eight_turning_delay_target.l.rudder_target;
+                rudder = eight_turning_target.l.rudder_target;
             }
             else
             {
@@ -557,7 +557,7 @@ private:
             rclcpp::Duration dt = this->now() - rudder_delay_time;
             if (dt.seconds() < eight_turning_delay.r.delay_rudder) // 旋回司令が送られてから暫くまつ
             {
-                rudder = eight_turning_delay_target.r.rudder_target;
+                rudder = eight_turning_target.r.rudder_target;
             }
             else
             {
@@ -639,7 +639,7 @@ private:
     int yaw_offset_flag = 0;
     double count_start_yaw = 0;
     double turning_count_range = 1.75 * M_PI;
-    uint turning_count = 0;
+    double turning_count = 0;
     uint last_count;
 
     double throttle_avg;
@@ -657,7 +657,7 @@ private:
 
     double rotation_count_;
     nokolat2024::main_control::EIGHT_TURN_MODE turn_mode;
-    rcl::Time get_horizontal_roll_time;
+    rclcpp::Time get_horizontal_roll_time;
 
     rclcpp::Time rudder_delay_time;
 

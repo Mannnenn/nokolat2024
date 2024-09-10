@@ -38,16 +38,19 @@ namespace nokolat2024
             LEFT_TURN = -1,
             NEUTRAL = 0,
             RIGHT_TURN = 1,
-        }
+        };
 
         // マップを初期化
+
         const std::unordered_map<int16_t, std::string>
             control_mode_map = {
                 {CONTROL_MODE::MANUAL, "MANUAL"},
                 {CONTROL_MODE::AUTO_TURNING, "AUTO_TURNING"},
                 {CONTROL_MODE::AUTO_RISE_TURNING, "AUTO_RISE_TURNING"},
                 {CONTROL_MODE::AUTO_LANDING, "AUTO_LANDING"},
-                {CONTROL_MODE::AUTO_EIGHT, "AUTO_EIGHT"}};
+                {CONTROL_MODE::AUTO_EIGHT, "AUTO_EIGHT"},
+                {CONTROL_MODE::AUTO_STRAIGHT, "AUTO_STRAIGHT"},
+                {CONTROL_MODE::AUTO_TURNING_R, "AUTO_TURNING_R"}};
 
         struct ControlInfo_config
         {
