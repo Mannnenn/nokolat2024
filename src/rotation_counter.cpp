@@ -45,10 +45,17 @@ public:
 
         rotation_counter_pub_ = this->create_publisher<std_msgs::msg::Float32>(output_rotation_counter_topic_name, qos_settings);
 
-        epsilon_ = 0.2;
+        beyond_boundary_judgment_criteria = 0.1;
+        lap_judgment_criteria = 0.3;
+        count_duplication_time_judgment_criteria = 0.5;
+
+        rotation_standard = 1.5 * M_PI;
+
+        rotation_direction_ = 0;
         over_2pi_ = 0;
         yaw_offset_ = 0;
         last_time_ = this->now();
+        last_time_for_several_rotate_ = this->now();
     }
 
 private:
@@ -57,80 +64,109 @@ private:
         if (is_first_counter_)
         {
             start_yaw_ = msg->yaw;
-            previous_yaw_ = msg->yaw;
             over_2pi_ = 0;
             yaw_offset_ = 0;
             is_first_counter_ = false;
-
-            RCLCPP_INFO(this->get_logger(), "Start counting");
         }
 
         previous_yaw_ = msg->yaw;
 
-        if (rotation_direction_ == 1 && previous_yaw_ > M_PI - epsilon_)
+        // 境界値付近に1回でも近づいたら常にオフセット
+        yaw_offset_ = 2 * M_PI * over_2pi_;
+
+        double yaw_correct = previous_yaw_ + yaw_offset_;
+
+        // gaolの値を決定する
+        goal_yaw_ = start_yaw_ + rotation_standard * rotation_direction_;
+        if (over_2pi_ > 0)
         {
-            over_2pi_ = 1;
+            goal_yaw_ += 2 * M_PI * (over_2pi_ - 1);
         }
-        else if (rotation_direction_ == -1 && previous_yaw_ < -M_PI + epsilon_)
+        else if (over_2pi_ < 0)
         {
-            over_2pi_ = -1;
+            goal_yaw_ -= 2 * M_PI * (over_2pi_ + 1);
         }
 
-        if (over_2pi_ == 1 && previous_yaw_ > -M_PI)
-        {
-            yaw_offset_ = 2 * M_PI;
-        }
-        else if (over_2pi_ == -1 && previous_yaw_ < M_PI)
-        {
-            yaw_offset_ = -2 * M_PI;
-        }
-        else
-        {
-            yaw_offset_ = 0;
-        }
-
-        double yaw = previous_yaw_ + yaw_offset_;
-
-        // RCLCPP_INFO(this->get_logger(), "Over boundary value %d", over_2pi_);
-        // RCLCPP_INFO(this->get_logger(), "Rotation %f", rotation_direction_);
         // RCLCPP_INFO(this->get_logger(), "before offset %f", previous_yaw_);
-        // RCLCPP_INFO(this->get_logger(), "after offset %f", yaw);
         // RCLCPP_INFO(this->get_logger(), "start yaw %f", start_yaw_);
-        // RCLCPP_INFO(this->get_logger(), "rotation counter %f", rotation_counter_);
+
+        RCLCPP_INFO(this->get_logger(), "rotation counter %f", rotation_counter_);
+        RCLCPP_INFO(this->get_logger(), "Over boundary value %d", over_2pi_);
+        RCLCPP_INFO(this->get_logger(), "After offset %f", yaw_correct);
+        RCLCPP_INFO(this->get_logger(), "Count up target: %f", goal_yaw_);
 
         rclcpp::Time current_time = this->now();
         rclcpp::Duration diff = current_time - last_time_;
 
-        double epsilon_judgement = 0.1;
-
-        if (over_2pi_ == 1 && start_yaw_ + 2 * M_PI - epsilon_judgement < yaw && diff.seconds() > 1.0)
+        // 回転方向が正かつ範囲内
+        if (rotation_direction_ == 1 &&
+            goal_yaw_ - lap_judgment_criteria < yaw_correct && yaw_correct < goal_yaw_ &&
+            diff.seconds() > count_duplication_time_judgment_criteria)
         {
             rotation_counter_++;
             is_first_counter_ = true;
-            last_time_ = this->now();
+            pub_counter();
             RCLCPP_INFO(this->get_logger(), "Count up");
-
-            std_msgs::msg::Float32 rotation_counter_msg;
-            rotation_counter_msg.data = rotation_counter_;
-            rotation_counter_pub_->publish(rotation_counter_msg);
         }
-        else if (over_2pi_ == -1 && start_yaw_ - 2 * M_PI + epsilon_judgement > yaw && diff.seconds() > 1.0)
+        // 回転方向が負かつ範囲内
+        else if (rotation_direction_ == -1 &&
+                 goal_yaw_ < yaw_correct && yaw_correct < goal_yaw_ + lap_judgment_criteria &&
+                 diff.seconds() > count_duplication_time_judgment_criteria)
         {
             rotation_counter_--;
             is_first_counter_ = true;
-            last_time_ = this->now();
+            pub_counter();
             RCLCPP_INFO(this->get_logger(), "Count down");
-
-            std_msgs::msg::Float32 rotation_counter_msg;
-            rotation_counter_msg.data = rotation_counter_;
-            rotation_counter_pub_->publish(rotation_counter_msg);
         }
+
+        current_time = this->now();
+        diff = current_time - last_time_for_several_rotate_;
+
+        // 境界値に近づいたら実行される
+        if (rotation_direction_ == 1 &&
+            diff.seconds() > count_duplication_time_judgment_criteria &&
+            yaw_correct > M_PI * (1 + 2 * over_2pi_) - beyond_boundary_judgment_criteria)
+        {
+            // 左回転で境界値を超えたので一回転分正にオフセット
+            over_2pi_++;
+            last_time_for_several_rotate_ = this->now();
+            // RCLCPP_INFO(this->get_logger(), "++");
+        }
+        else if (rotation_direction_ == -1 &&
+                 diff.seconds() > count_duplication_time_judgment_criteria &&
+                 yaw_correct < M_PI * (-1 + 2 * over_2pi_) + beyond_boundary_judgment_criteria)
+        {
+            // 右回転で境界値を超えたので一回転分負にオフセット
+            over_2pi_--;
+            last_time_for_several_rotate_ = this->now();
+            // RCLCPP_INFO(this->get_logger(), "--");
+        }
+
+        //// 回転が境界値より前に巻き戻っていたらオフセットを戻す
+        // if (over_2pi_ == 1 && previous_yaw_ > M_PI - beyond_boundary_judgment_criteria)
+        //{
+        //     yaw_offset_ = 0;
+        // }
+        // else if (over_2pi_ == -1 && previous_yaw_ < -M_PI + beyond_boundary_judgment_criteria)
+        //{
+        //     yaw_offset_ = 0;
+        // }
+    }
+
+    void pub_counter()
+    {
+        is_first_counter_ = true;
+        last_time_ = this->now();
+
+        std_msgs::msg::Float32 rotation_counter_msg;
+        rotation_counter_msg.data = rotation_counter_;
+        rotation_counter_pub_->publish(rotation_counter_msg);
     }
 
     void angular_velocity_callback(const nokolat2024_msg::msg::Rpy::SharedPtr msg)
     {
         yaw_speed_history_.push_back(msg->yaw);
-        if (yaw_speed_history_.size() > 10)
+        if (yaw_speed_history_.size() > 5)
         {
             yaw_speed_history_.pop_front();
         }
@@ -141,7 +177,7 @@ private:
         {
             rotation_direction_ = 1; // 値が増加するのは左旋回
         }
-        else
+        else if (rotation_speed_ave_ < 0)
         {
             rotation_direction_ = -1; // 値が減少するのは右旋回
         }
@@ -153,7 +189,7 @@ private:
         {
             RCLCPP_INFO(this->get_logger(), "Reset counter");
             rotation_counter_ = 0;
-            is_first_counter_ = true;
+            pub_counter();
         }
     }
 
@@ -164,21 +200,31 @@ private:
     rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr rotation_counter_pub_;
 
     double start_yaw_;
+    double goal_yaw_;
 
     double rotation_speed_ave_;
     double rotation_direction_;
 
     double rotation_counter_;
-    double epsilon_;
+    // 境界値をまたいだかの判断基準
+    double beyond_boundary_judgment_criteria;
+    // 一周したかの判断基準
+    double lap_judgment_criteria;
+    // 時間的に回転数の計測がかぶらないようにフィルターをかける
+    double count_duplication_time_judgment_criteria;
 
-    std::deque<double> yaw_speed_history_;
+    std::deque<double>
+        yaw_speed_history_;
 
     double yaw_offset_;
     double previous_yaw_;
     int over_2pi_;
     bool is_first_counter_;
 
+    double rotation_standard;
+
     rclcpp::Time last_time_;
+    rclcpp::Time last_time_for_several_rotate_;
 };
 
 int main(int argc, char *argv[])

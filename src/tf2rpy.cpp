@@ -38,7 +38,7 @@ public:
         }
 
         timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(50),
+            std::chrono::milliseconds(10), // 100Hz?
             std::bind(&Tf2RpyNode::timer_callback, this));
 
         // パラメータの宣言
