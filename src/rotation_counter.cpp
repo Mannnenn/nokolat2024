@@ -46,14 +46,12 @@ public:
         rotation_counter_pub_ = this->create_publisher<std_msgs::msg::Float32>(output_rotation_counter_topic_name, qos_settings);
 
         beyond_boundary_judgment_criteria = 0.1;
-        lap_judgment_criteria = 0.3;
-        count_duplication_time_judgment_criteria = 0.5;
+        lap_judgment_criteria = 0.1;
+        count_duplication_time_judgment_criteria = 1.0;
 
-        rotation_standard = 1.5 * M_PI;
+        rotation_standard = 2.0 * M_PI;
 
         rotation_direction_ = 0;
-        over_2pi_ = 0;
-        yaw_offset_ = 0;
         last_time_ = this->now();
         last_time_for_several_rotate_ = this->now();
     }
@@ -61,6 +59,8 @@ public:
 private:
     void rpy_callback(const nokolat2024_msg::msg::Rpy::SharedPtr msg)
     {
+        // プラスが左回転、マイナスが右回転
+        // カウントアップか図る角度変更でリセット
         if (is_first_counter_)
         {
             start_yaw_ = msg->yaw;
@@ -71,13 +71,15 @@ private:
 
         previous_yaw_ = msg->yaw;
 
-        // 境界値付近に1回でも近づいたら常にオフセット
+        // 回転量が連続になるように正に1回転したら+2π、負に1回転したら-2πする
         yaw_offset_ = 2 * M_PI * over_2pi_;
 
+        // Yawの-π~πの値を回転数分ずらす
         double yaw_correct = previous_yaw_ + yaw_offset_;
 
-        // gaolの値を決定する
+        // gaolの値を決定する。最初の値に何度で1回転とするかの値に回転方向をかけて足す。これでプラス回転で初期角度から1回転分増えた値に、マイナス回転で初期角度から1回転分減った値になる
         goal_yaw_ = start_yaw_ + rotation_standard * rotation_direction_;
+        // 　
         if (over_2pi_ > 0)
         {
             goal_yaw_ += 2 * M_PI * (over_2pi_ - 1);
@@ -86,14 +88,6 @@ private:
         {
             goal_yaw_ -= 2 * M_PI * (over_2pi_ + 1);
         }
-
-        // RCLCPP_INFO(this->get_logger(), "before offset %f", previous_yaw_);
-        // RCLCPP_INFO(this->get_logger(), "start yaw %f", start_yaw_);
-
-        RCLCPP_INFO(this->get_logger(), "rotation counter %f", rotation_counter_);
-        RCLCPP_INFO(this->get_logger(), "Over boundary value %d", over_2pi_);
-        RCLCPP_INFO(this->get_logger(), "After offset %f", yaw_correct);
-        RCLCPP_INFO(this->get_logger(), "Count up target: %f", goal_yaw_);
 
         rclcpp::Time current_time = this->now();
         rclcpp::Duration diff = current_time - last_time_;
@@ -130,7 +124,6 @@ private:
             // 左回転で境界値を超えたので一回転分正にオフセット
             over_2pi_++;
             last_time_for_several_rotate_ = this->now();
-            // RCLCPP_INFO(this->get_logger(), "++");
         }
         else if (rotation_direction_ == -1 &&
                  diff.seconds() > count_duplication_time_judgment_criteria &&
@@ -139,18 +132,7 @@ private:
             // 右回転で境界値を超えたので一回転分負にオフセット
             over_2pi_--;
             last_time_for_several_rotate_ = this->now();
-            // RCLCPP_INFO(this->get_logger(), "--");
         }
-
-        //// 回転が境界値より前に巻き戻っていたらオフセットを戻す
-        // if (over_2pi_ == 1 && previous_yaw_ > M_PI - beyond_boundary_judgment_criteria)
-        //{
-        //     yaw_offset_ = 0;
-        // }
-        // else if (over_2pi_ == -1 && previous_yaw_ < -M_PI + beyond_boundary_judgment_criteria)
-        //{
-        //     yaw_offset_ = 0;
-        // }
     }
 
     void pub_counter()
