@@ -224,7 +224,10 @@ private:
                 get_target_altitude();
                 get_target_throttle();
 
-                pub_rotation_rest_msg(1); // 1周したらカウントアップに設定
+                while (!rotation_count_) // 周回のカウントが0になるまでリセットする
+                {
+                    pub_rotation_rest_msg(1); // 1周したらカウントアップに設定
+                }
 
                 rudder_delay_time = this->now(); // ラダーの遅延起動測定のため
 
@@ -399,7 +402,7 @@ private:
         altitude_error = pose_received_.z - altitude_avg_;
         target_pitch = cutoff_min_max(auto_turning_gain.l.pitch_gain * altitude_error, -M_PI / 6, M_PI / 6);
         pitch_error = pose_received_.pitch - target_pitch;
-        elevator = neutral_position_.elevator - auto_turning_gain.l.elevator_gain * pitch_error;
+        elevator = neutral_position_.elevator + auto_turning_gain.l.elevator_gain * pitch_error;
 
         // ロール誤差を計算
         roll_error = pose_received_.roll - auto_turning_target.l.roll_target;
