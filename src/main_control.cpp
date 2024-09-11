@@ -11,7 +11,10 @@ public:
         this->declare_parameter<std::string>("input_mode_topic_name", "/mode");
         this->declare_parameter<std::string>("input_angular_topic_name", "/rpy");
         this->declare_parameter<std::string>("input_altitude_stamped_topic_name", "/altitude");
+        this->declare_parameter<std::string>("input_rotation_counter_topic_name", "/rotation_counter");
+
         this->declare_parameter<std::string>("output_command_topic_name", "/command_send");
+        this->declare_parameter<std::string>("output_counter_reset_topic_name", "/rotation_counter_reset");
 
         // パラメータの取得
         std::string input_neutral_position_topic_name;
@@ -24,8 +27,13 @@ public:
         this->get_parameter("input_angular_topic_name", input_angular_topic_name);
         std::string input_altitude_stamped_topic_name;
         this->get_parameter("input_altitude_stamped_topic_name", input_altitude_stamped_topic_name);
+        std::string input_rotation_counter_topic_name;
+        this->get_parameter("input_rotation_counter_topic_name", input_rotation_counter_topic_name);
+
         std::string output_command_topic_name;
         this->get_parameter("output_command_topic_name", output_command_topic_name);
+        std::string output_counter_reset_topic_name;
+        this->get_parameter("output_counter_reset_topic_name", output_counter_reset_topic_name);
 
         rclcpp::QoS qos(100); // 10 is the history depth
         qos.reliability(rclcpp::ReliabilityPolicy::BestEffort);
@@ -35,20 +43,22 @@ public:
         command_explicit_subscriber_ = this->create_subscription<nokolat2024_msg::msg::Command>(input_command_explicit_topic_name, qos, std::bind(&MainControlNode::command_explicit_callback, this, std::placeholders::_1));
         mode_subscriber_ = this->create_subscription<std_msgs::msg::String>(input_mode_topic_name, qos, std::bind(&MainControlNode::mode_callback, this, std::placeholders::_1));
         rpy_subscriber_ = this->create_subscription<nokolat2024_msg::msg::Rpy>(input_angular_topic_name, qos, std::bind(&MainControlNode::rpy_callback, this, std::placeholders::_1));
+        rotation_counter_subscriber_ = this->create_subscription<std_msgs::msg::Float32>(input_rotation_counter_topic_name, qos, std::bind(&MainControlNode::rotation_counter_callback, this, std::placeholders::_1));
 
         command_publisher_ = this->create_publisher<nokolat2024_msg::msg::Command>(output_command_topic_name, qos);
+        rotation_counter_reset_publisher_ = this->create_publisher<std_msgs::msg::Float32>(output_counter_reset_topic_name, qos);
 
         rclcpp::QoS qos_settings = rclcpp::QoS(rclcpp::KeepLast(10)).reliable();
-        throttle_command_publisher_ = this->create_publisher<std_msgs::msg::Float32>("/throttle_command", qos_settings);
-        altitude_target_publisher_ = this->create_publisher<std_msgs::msg::Float32>("/altitude_target", qos_settings);
-        altitude_error_publisher_ = this->create_publisher<std_msgs::msg::Float32>("/altitude_error", qos_settings);
-        pitch_target_publisher_ = this->create_publisher<std_msgs::msg::Float32>("/pitch_target", qos_settings);
-        pitch_error_publisher_ = this->create_publisher<std_msgs::msg::Float32>("/pitch_error", qos_settings);
-        elevator_command_publisher_ = this->create_publisher<std_msgs::msg::Float32>("/elevator_command", qos_settings);
-        roll_target_publisher_ = this->create_publisher<std_msgs::msg::Float32>("/roll_target", qos_settings);
-        roll_error_publisher_ = this->create_publisher<std_msgs::msg::Float32>("/roll_error", qos_settings);
-        aileron_command_publisher_ = this->create_publisher<std_msgs::msg::Float32>("/aileron_command", qos_settings);
-        rudder_command_publisher_ = this->create_publisher<std_msgs::msg::Float32>("/rudder_command", qos_settings);
+        throttle_command_publisher_ = this->create_publisher<std_msgs::msg::Float32>("/ui/throttle_command", qos_settings);
+        altitude_target_publisher_ = this->create_publisher<std_msgs::msg::Float32>("/ui/altitude_target", qos_settings);
+        altitude_error_publisher_ = this->create_publisher<std_msgs::msg::Float32>("/ui/altitude_error", qos_settings);
+        pitch_target_publisher_ = this->create_publisher<std_msgs::msg::Float32>("/ui/pitch_target", qos_settings);
+        pitch_error_publisher_ = this->create_publisher<std_msgs::msg::Float32>("/ui/pitch_error", qos_settings);
+        elevator_command_publisher_ = this->create_publisher<std_msgs::msg::Float32>("/ui/elevator_command", qos_settings);
+        roll_target_publisher_ = this->create_publisher<std_msgs::msg::Float32>("/ui/roll_target", qos_settings);
+        roll_error_publisher_ = this->create_publisher<std_msgs::msg::Float32>("/ui/roll_error", qos_settings);
+        aileron_command_publisher_ = this->create_publisher<std_msgs::msg::Float32>("/ui/aileron_command", qos_settings);
+        rudder_command_publisher_ = this->create_publisher<std_msgs::msg::Float32>("/ui/rudder_command", qos_settings);
 
         // YAMLファイルのパスを取得する
         this->declare_parameter<std::string>("yaml_control_config", "/home/oga/ros2_humble/install/nokolat2024/share/nokolat2024/param/control_param.yaml");
@@ -104,6 +114,7 @@ public:
         auto_turning_gain.elevator_gain = control_info_config_["auto_turning"]["gain"]["elevator"]["p"].as<double>();
         auto_turning_gain.aileron_gain = control_info_config_["auto_turning"]["gain"]["aileron"]["p"].as<double>();
         auto_turning_gain.pitch_gain = control_info_config_["auto_turning"]["gain"]["pitch"]["p"].as<double>();
+        auto_turning_gain.nose_up_pitch_gain = control_info_config_["auto_turning"]["gain"]["nose_up_pitch"].as<double>();
 
         eight_turning_gain.elevator_gain = control_info_config_["eight_turning"]["gain"]["elevator"]["p"].as<double>();
         eight_turning_gain.aileron_gain = control_info_config_["eight_turning"]["gain"]["aileron"]["p"].as<double>();
@@ -149,7 +160,7 @@ public:
         }
 
         timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(100), // 100Hz?
+            std::chrono::milliseconds(60), // 20ms
             std::bind(&MainControlNode::timer_callback, this));
     }
 
@@ -185,6 +196,11 @@ private:
         pose_received_.yaw = msg->yaw;
     }
 
+    void rotation_counter_callback(const std_msgs::msg::Float32::SharedPtr msg)
+    {
+        turning_count = msg->data;
+    }
+
     void timer_callback()
     {
         geometry_msgs::msg::TransformStamped transform_stamped;
@@ -213,19 +229,18 @@ private:
     {
         if (control_mode_ == nokolat2024::main_control::control_mode_map.at(nokolat2024::main_control::CONTROL_MODE::MANUAL))
         {
-            auto_turning_first_callback_flag = true;
-            eight_turning_first_callback_flag = true;
+            mode_init = true;
         }
 
         if (control_mode_ == nokolat2024::main_control::control_mode_map.at(nokolat2024::main_control::CONTROL_MODE::AUTO_TURNING))
         {
-            if (auto_turning_first_callback_flag)
+            if (mode_init)
             {
                 // auto_turning_target.throttle_target = 692;
                 RCLCPP_INFO(this->get_logger(), "MODE CHANGE");
                 get_target_altitude();
                 get_target_throttle();
-                auto_turning_first_callback_flag = false;
+                mode_init = false;
                 RCLCPP_INFO(this->get_logger(), "target_altitude[%f]", auto_turning_target.altitude_target);
                 RCLCPP_INFO(this->get_logger(), "target_throttle[%f]", auto_turning_target.throttle_target);
             }
@@ -236,13 +251,11 @@ private:
 
         if (control_mode_ == nokolat2024::main_control::control_mode_map.at(nokolat2024::main_control::CONTROL_MODE::AUTO_EIGHT))
         {
-            if (eight_turning_first_callback_flag)
+            if (mode_init)
             {
                 get_target_altitude();
                 get_target_throttle();
-                turning_count = 0;
-                turning_count_range = 3 / 2 * M_PI; // 270deg回ったら旋回方向を変更
-                eight_turning_first_callback_flag = false;
+                mode_init = false;
             }
             auto_eight_control();
             // RCLCPP_INFO(this->get_logger(), "AUTO_EIGHT");
@@ -259,34 +272,75 @@ private:
             // auto_landing_control();
             //  RCLCPP_INFO(this->get_logger(), "AUTO_LANDING");
         }
+
+        pub_command_data();
+        pub_ui_data();
     }
 
     void auto_turning_control()
     {
         // 制御値を計算
-        double throttle;
-        double altitude_error;
-        double target_pitch;
-        double pitch_error;
-        double elevator;
 
+        // スロットルはそのままを維持するように
         throttle = auto_turning_target.throttle_target;
-        std_msgs::msg::Float32 throttle_command_msg;
-        throttle_command_msg.data = throttle;
-        throttle_command_publisher_->publish(throttle_command_msg);
 
+        // 標高の誤差を計算
         altitude_error = pose_received_.z - auto_turning_target.altitude_target;
+        // 標高の誤差にピッチを比例
         target_pitch = auto_turning_gain.pitch_gain * altitude_error;
+        // ピッチの誤差を計算
         pitch_error = pose_received_.pitch - target_pitch;
 
-        if (target_pitch >= 0)
+        // ピッチの誤差にエレベーターを比例、機首上げがよくなるように係数を変更
+        if (target_pitch >= 0) // 機首下げ
         {
             elevator = neutral_position_.elevator - auto_turning_gain.elevator_gain * pitch_error;
         }
-        if (target_pitch < 0)
+        if (target_pitch < 0) // 機首上げ
         {
-            elevator = neutral_position_.elevator - 1.3 * auto_turning_gain.elevator_gain * pitch_error;
+            elevator = neutral_position_.elevator - auto_turning_gain.nose_up_pitch_gain * auto_turning_gain.elevator_gain * pitch_error;
         }
+
+        // ロールの誤差を計算
+        roll_error = pose_received_.roll - auto_turning_target.roll_target;
+
+        // ロールの誤差にエルロンを比例
+        aileron_l = neutral_position_.aileron_l + auto_turning_gain.aileron_gain * roll_error;
+        aileron_r = neutral_position_.aileron_r + auto_turning_gain.aileron_gain * roll_error;
+
+        // ラダーの制御値はそのまま
+        rudder = neutral_position_.rudder;
+    }
+
+    void auto_eight_control()
+    {
+    }
+
+    void pub_command_data()
+    {
+        // 制御値を送信
+        nokolat2024_msg::msg::Command command;
+        command.throttle = cutoff_min_max(throttle, config.throttle_min, config.throttle_max);
+        command.elevator = cutoff_min_max(elevator, config.elevator_min, config.elevator_max);
+        command.aileron_r = cutoff_min_max(aileron_r, config.aileron_min_r, config.aileron_max_r);
+        command.aileron_l = cutoff_min_max(aileron_l, config.aileron_min_l, config.aileron_max_l);
+        command.rudder = cutoff_min_max(rudder, config.rudder_min, config.rudder_max);
+        command.dropping_device = config.drop_min; // ドロップ装置は常に閉じておく
+        command_publisher_->publish(command);
+    }
+
+    void pub_rotation_rest_data(double rotation_standard)
+    {
+        std_msgs::msg::Float32 rotation_counter_reset_msg;
+        rotation_counter_reset_msg.data = rotation_standard; // この値でカウントアップするように変更、0~1周
+        rotation_counter_reset_publisher_->publish(rotation_counter_reset_msg);
+    }
+
+    void pub_ui_data()
+    {
+        std_msgs::msg::Float32 throttle_command_msg;
+        throttle_command_msg.data = throttle;
+        throttle_command_publisher_->publish(throttle_command_msg);
 
         std_msgs::msg::Float32 altitude_target_msg;
         altitude_target_msg.data = auto_turning_target.altitude_target;
@@ -308,15 +362,6 @@ private:
         elevator_command_msg.data = elevator;
         elevator_command_publisher_->publish(elevator_command_msg);
 
-        double aileron_l;
-        double aileron_r;
-        double roll_error;
-
-        roll_error = pose_received_.roll - auto_turning_target.roll_target;
-
-        aileron_l = neutral_position_.aileron_l + auto_turning_gain.aileron_gain * roll_error;
-        aileron_r = neutral_position_.aileron_r + auto_turning_gain.aileron_gain * roll_error;
-
         std_msgs::msg::Float32 roll_target_msg;
         roll_target_msg.data = auto_turning_target.roll_target;
         roll_target_publisher_->publish(roll_target_msg);
@@ -329,28 +374,9 @@ private:
         aileron_command_msg.data = aileron_l;
         aileron_command_publisher_->publish(aileron_command_msg);
 
-        double rudder;
-
-        // ラダーの制御値を遅延させる
-        rudder = neutral_position_.rudder;
-
         std_msgs::msg::Float32 rudder_command_msg;
         rudder_command_msg.data = rudder;
         rudder_command_publisher_->publish(rudder_command_msg);
-
-        // 制御値を送信
-        nokolat2024_msg::msg::Command command;
-        command.throttle = cutoff_min_max(throttle, config.throttle_min, config.throttle_max);
-        command.elevator = cutoff_min_max(elevator, config.elevator_min, config.elevator_max);
-        command.aileron_r = cutoff_min_max(aileron_r, config.aileron_min_r, config.aileron_max_r);
-        command.aileron_l = cutoff_min_max(aileron_l, config.aileron_min_l, config.aileron_max_l);
-        command.rudder = cutoff_min_max(rudder, config.rudder_min, config.rudder_max);
-        command.dropping_device = config.drop_min; // ドロップ装置は常に閉じておく
-        command_publisher_->publish(command);
-    }
-
-    void auto_eight_control()
-    {
     }
 
     double cutoff_min_max(double value, double min, double max)
@@ -397,22 +423,24 @@ private:
     // パラメータを取得
     YAML::Node control_info_config_;
 
+    // モードが変更されたかどうか、今のモードを記録
     std::string control_mode_;
-
-    bool auto_turning_first_callback_flag = false;
-    bool eight_turning_first_callback_flag = false;
+    bool mode_init = true;
 
     std::deque<double> altitude_history_;
     std::deque<double> throttle_history_;
-    std::deque<double> yaw_history_;
 
-    constexpr static double yaw_delta = 0.05 * M_PI;
-    bool count_start_flag = true;
-    int yaw_offset_flag = 0;
-    double count_start_yaw = 0;
-    double turning_count_range = 1.75 * M_PI;
-    uint turning_count = 0;
-    uint last_count;
+    double turning_count;
+
+    double throttle;
+    double altitude_error;
+    double target_pitch;
+    double pitch_error;
+    double elevator;
+    double aileron_l;
+    double aileron_r;
+    double roll_error;
+    double rudder;
 
     rclcpp::TimerBase::SharedPtr timer_;
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
@@ -422,8 +450,11 @@ private:
     rclcpp::Subscription<nokolat2024_msg::msg::Command>::SharedPtr command_explicit_subscriber_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr mode_subscriber_;
     rclcpp::Subscription<nokolat2024_msg::msg::Rpy>::SharedPtr rpy_subscriber_;
+    rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr rotation_counter_subscriber_;
 
     rclcpp::Publisher<nokolat2024_msg::msg::Command>::SharedPtr command_publisher_;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr rotation_counter_reset_publisher_;
+
     rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr throttle_command_publisher_;
     rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr altitude_target_publisher_;
     rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr altitude_error_publisher_;

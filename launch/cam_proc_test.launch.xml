@@ -157,7 +157,11 @@
             <param name="input_angular_topic_name" value="$(var rpy_angular)" />
             <param name="input_altitude_stamped_topic_name" value="$(var altitude)" />
             <param name="input_neutral_position_topic_name" value="$(var neutral_position)" />
+            <param name="input_rotation_counter_topic_name" value="$(var rotation_counter)" />
+
             <param name="output_command_topic_name" value="$(var send_command_explicit)" />
+            <param name="output_counter_reset_topic_name"
+                value="$(var counter_reset)" />
         </node>
 
         <node pkg="nokolat2024" exec="send_command" name="send_command" output="screen">

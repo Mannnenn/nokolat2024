@@ -8,6 +8,7 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
 
+#include "std_msgs/msg/float32.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "geometry_msgs/msg/point_stamped.hpp"
 
@@ -65,6 +66,7 @@ namespace nokolat2024
             double elevator_gain;
             double aileron_gain;
             double pitch_gain;
+            double nose_up_pitch_gain;
         };
 
         struct ControlInfo_target
