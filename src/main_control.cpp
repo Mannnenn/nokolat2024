@@ -120,16 +120,13 @@ public:
         eight_turning_gain.aileron_gain = control_info_config_["eight_turning"]["gain"]["aileron"]["p"].as<double>();
 
         RCLCPP_INFO(this->get_logger(), "get gain parameter");
+
         // 制御目標値を取得
-        auto_turning_target.altitude_target = control_info_config_["auto_turning"]["target"]["altitude"].as<double>();
         auto_turning_target.roll_target = control_info_config_["auto_turning"]["target"]["roll"].as<double>();
-        auto_turning_target.throttle_target = control_info_config_["auto_turning"]["target"]["throttle"].as<double>();
         auto_turning_target.rudder_target = control_info_config_["auto_turning"]["target"]["rudder"].as<double>();
 
-        eight_turning_target.altitude_target = control_info_config_["eight_turning"]["target"]["altitude"].as<double>();
         eight_turning_target.roll_target_l = control_info_config_["eight_turning"]["target"]["roll"]["l"].as<double>();
         eight_turning_target.roll_target_r = control_info_config_["eight_turning"]["target"]["roll"]["r"].as<double>();
-        eight_turning_target.throttle_target = control_info_config_["eight_turning"]["target"]["throttle"].as<double>();
         eight_turning_target.rudder_target_l = control_info_config_["eight_turning"]["target"]["rudder"]["l"].as<double>();
         eight_turning_target.rudder_target_r = control_info_config_["eight_turning"]["target"]["rudder"]["r"].as<double>();
 
@@ -160,7 +157,7 @@ public:
         }
 
         timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(60), // 20ms
+            std::chrono::milliseconds(70), // 20ms
             std::bind(&MainControlNode::timer_callback, this));
     }
 
@@ -238,11 +235,10 @@ private:
             {
                 // auto_turning_target.throttle_target = 692;
                 RCLCPP_INFO(this->get_logger(), "MODE CHANGE");
-                get_target_altitude();
-                get_target_throttle();
+                auto_turning_target.altitude_target = get_target_altitude();
+                auto_turning_target.throttle_target = get_target_throttle();
                 mode_init = false;
-                RCLCPP_INFO(this->get_logger(), "target_altitude[%f]", auto_turning_target.altitude_target);
-                RCLCPP_INFO(this->get_logger(), "target_throttle[%f]", auto_turning_target.throttle_target);
+                start_mode_time_ = this->now(); // 旋回開始の時間を取得
             }
 
             auto_turning_control();
@@ -251,26 +247,14 @@ private:
 
         if (control_mode_ == nokolat2024::main_control::control_mode_map.at(nokolat2024::main_control::CONTROL_MODE::AUTO_EIGHT))
         {
-            if (mode_init)
-            {
-                get_target_altitude();
-                get_target_throttle();
-                mode_init = false;
-            }
-            auto_eight_control();
-            // RCLCPP_INFO(this->get_logger(), "AUTO_EIGHT");
         }
 
         if (control_mode_ == nokolat2024::main_control::control_mode_map.at(nokolat2024::main_control::CONTROL_MODE::AUTO_RISE_TURNING))
         {
-            // auto_rise_turning_control();
-            //  RCLCPP_INFO(this->get_logger(), "AUTO_RISE_TURNING");
         }
 
         if (control_mode_ == nokolat2024::main_control::control_mode_map.at(nokolat2024::main_control::CONTROL_MODE::AUTO_LANDING))
         {
-            // auto_landing_control();
-            //  RCLCPP_INFO(this->get_logger(), "AUTO_LANDING");
         }
 
         pub_command_data();
@@ -287,7 +271,7 @@ private:
         // 標高の誤差を計算
         altitude_error = pose_received_.z - auto_turning_target.altitude_target;
         // 標高の誤差にピッチを比例
-        target_pitch = auto_turning_gain.pitch_gain * altitude_error;
+        target_pitch = cutoff_min_max(auto_turning_gain.pitch_gain * altitude_error, -M_PI / 6, M_PI / 6);
         // ピッチの誤差を計算
         pitch_error = pose_received_.pitch - target_pitch;
 
@@ -309,7 +293,18 @@ private:
         aileron_r = neutral_position_.aileron_r + auto_turning_gain.aileron_gain * roll_error;
 
         // ラダーの制御値はそのまま
-        rudder = neutral_position_.rudder;
+        rclcpp::Duration diff = this->now() - start_mode_time_;
+
+        if (diff.seconds() > auto_turning_delay.delay_rudder)
+        {
+            // 一定時間後にラダーを目標値に変更
+            rudder = auto_turning_target.rudder_target;
+        }
+        else
+        {
+            // 一定時間前は中立位置に保つ
+            rudder = neutral_position_.rudder;
+        }
     }
 
     void auto_eight_control()
@@ -395,15 +390,14 @@ private:
         }
     }
 
-    void get_target_altitude()
+    double get_target_altitude()
     {
-        auto_turning_target.altitude_target = std::accumulate(altitude_history_.begin(), altitude_history_.end(), 0.0) / altitude_history_.size();
+        return std::accumulate(altitude_history_.begin(), altitude_history_.end(), 0.0) / altitude_history_.size();
     }
 
-    void get_target_throttle()
+    double get_target_throttle()
     {
-        auto_turning_target.throttle_target = std::accumulate(throttle_history_.begin(), throttle_history_.end(), 0.0) / throttle_history_.size();
-        RCLCPP_INFO(this->get_logger(), "target_throttle[%f]", auto_turning_target.throttle_target);
+        return std::accumulate(throttle_history_.begin(), throttle_history_.end(), 0.0) / throttle_history_.size();
     }
 
     // 制御情報を格納
@@ -429,6 +423,8 @@ private:
 
     std::deque<double> altitude_history_;
     std::deque<double> throttle_history_;
+
+    rclcpp::Time start_mode_time_;
 
     double turning_count;
 

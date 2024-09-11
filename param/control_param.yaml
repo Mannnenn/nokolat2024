@@ -28,15 +28,13 @@ control_info_config:
       aileron:
         p: 800
       pitch:
-        p: 1
+        p: 2
       nose_up_pitch: 1.3
     target:
-      altitude: 3.0
       roll: 0.0
-      throttle: 350
-      rudder: 1200
+      rudder: 1500
     delay:
-      rudder: 30
+      rudder: 2
 
   eight_turning:
     gain:
@@ -45,11 +43,9 @@ control_info_config:
       aileron:
         p: 800
     target:
-      altitude: 3.0
       roll:
         l: 0.0
         r: 0.0
-      throttle: 350
       rudder:
         l: 300
         r: 300
