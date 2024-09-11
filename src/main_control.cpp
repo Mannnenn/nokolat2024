@@ -35,7 +35,6 @@ public:
         command_explicit_subscriber_ = this->create_subscription<nokolat2024_msg::msg::Command>(input_command_explicit_topic_name, qos, std::bind(&MainControlNode::command_explicit_callback, this, std::placeholders::_1));
         mode_subscriber_ = this->create_subscription<std_msgs::msg::String>(input_mode_topic_name, qos, std::bind(&MainControlNode::mode_callback, this, std::placeholders::_1));
         rpy_subscriber_ = this->create_subscription<nokolat2024_msg::msg::Rpy>(input_angular_topic_name, qos, std::bind(&MainControlNode::rpy_callback, this, std::placeholders::_1));
-        altitude_subscriber_ = this->create_subscription<geometry_msgs::msg::PointStamped>(input_altitude_stamped_topic_name, qos, std::bind(&MainControlNode::altitude_callback, this, std::placeholders::_1));
 
         command_publisher_ = this->create_publisher<nokolat2024_msg::msg::Command>(output_command_topic_name, qos);
 
@@ -104,7 +103,7 @@ public:
         // ゲインなどのパラメータを取得
         auto_turning_gain.elevator_gain = control_info_config_["auto_turning"]["gain"]["elevator"]["p"].as<double>();
         auto_turning_gain.aileron_gain = control_info_config_["auto_turning"]["gain"]["aileron"]["p"].as<double>();
-        auto_turning_gain.elevator_gain = control_info_config_["auto_turning"]["gain"]["pitch"]["p"].as<double>();
+        auto_turning_gain.pitch_gain = control_info_config_["auto_turning"]["gain"]["pitch"]["p"].as<double>();
 
         eight_turning_gain.elevator_gain = control_info_config_["eight_turning"]["gain"]["elevator"]["p"].as<double>();
         eight_turning_gain.aileron_gain = control_info_config_["eight_turning"]["gain"]["aileron"]["p"].as<double>();
@@ -129,6 +128,29 @@ public:
         eight_turning_delay.delay_rudder = control_info_config_["eight_turning"]["delay"]["rudder"].as<uint>();
 
         RCLCPP_INFO(this->get_logger(), "get delay window parameter");
+
+        tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
+        tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+
+        // base_linkが利用可能になるまで待機
+        while (rclcpp::ok())
+        {
+            try
+            {
+                tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
+                RCLCPP_INFO(this->get_logger(), "base_link is now available.");
+                break;
+            }
+            catch (tf2::TransformException &ex)
+            {
+                RCLCPP_WARN(this->get_logger(), "Waiting for base_link to become available: %s", ex.what());
+                rclcpp::sleep_for(std::chrono::milliseconds(500));
+            }
+        }
+
+        timer_ = this->create_wall_timer(
+            std::chrono::milliseconds(100), // 100Hz?
+            std::bind(&MainControlNode::timer_callback, this));
     }
 
 private:
@@ -161,6 +183,34 @@ private:
         pose_received_.roll = msg->roll;
         pose_received_.pitch = msg->pitch;
         pose_received_.yaw = msg->yaw;
+    }
+
+    void timer_callback()
+    {
+        geometry_msgs::msg::TransformStamped transform_stamped;
+        try
+        {
+            transform_stamped = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
+        }
+        catch (tf2::TransformException &ex)
+        {
+            RCLCPP_ERROR(this->get_logger(), "%s", ex.what());
+            return;
+        }
+        altitude_history_.push_back(transform_stamped.transform.translation.z);
+        pose_received_.z = transform_stamped.transform.translation.z;
+
+        // 自動旋回に入る直前の高度を記録、それを基準にして目標高度を決定
+        if (altitude_history_.size() > 10)
+        {
+            altitude_history_.pop_front();
+        }
+
+        main_control();
+    }
+
+    void main_control()
+    {
         if (control_mode_ == nokolat2024::main_control::control_mode_map.at(nokolat2024::main_control::CONTROL_MODE::MANUAL))
         {
             auto_turning_first_callback_flag = true;
@@ -211,36 +261,31 @@ private:
         }
     }
 
-    void altitude_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg)
-    {
-        pose_received_.z = msg->point.z;
-        altitude_history_.push_back(pose_received_.z);
-        // 自動旋回に入る直前の高度を記録、それを基準にして目標高度を決定
-        if (altitude_history_.size() > 10)
-        {
-            altitude_history_.pop_front();
-        }
-    }
-
     void auto_turning_control()
     {
         // 制御値を計算
-        double throttle = auto_turning_target.throttle_target;
+        double throttle;
+        double altitude_error;
+        double target_pitch;
+        double pitch_error;
+        double elevator;
+
+        throttle = auto_turning_target.throttle_target;
         std_msgs::msg::Float32 throttle_command_msg;
         throttle_command_msg.data = throttle;
         throttle_command_publisher_->publish(throttle_command_msg);
 
-        double altitude_error = pose_received_.z - auto_turning_target.altitude_target;
-        double target_pitch = double target_pitch = cutoff_min_max(auto_turning_gain.pitch_gain * altitude_error, -M_PI / 4, M_PI / 4);
+        altitude_error = pose_received_.z - auto_turning_target.altitude_target;
+        target_pitch = auto_turning_gain.pitch_gain * altitude_error;
+        pitch_error = pose_received_.pitch - target_pitch;
 
-        double elevator;
         if (target_pitch >= 0)
         {
-            elevator = neutral_position_.elevator + auto_turning_gain.elevator_gain * (pose_received_.pitch - target_pitch);
+            elevator = neutral_position_.elevator - auto_turning_gain.elevator_gain * pitch_error;
         }
         if (target_pitch < 0)
         {
-            elevator = neutral_position_.elevator + 1.3 * auto_turning_gain.elevator_gain * (pose_received_.pitch - target_pitch);
+            elevator = neutral_position_.elevator - 1.3 * auto_turning_gain.elevator_gain * pitch_error;
         }
 
         std_msgs::msg::Float32 altitude_target_msg;
@@ -256,22 +301,28 @@ private:
         pitch_target_publisher_->publish(target_pitch_msg);
 
         std_msgs::msg::Float32 pitch_error_msg;
-        pitch_error_msg.data = pose_received_.pitch - target_pitch;
+        pitch_error_msg.data = pitch_error;
         pitch_error_publisher_->publish(pitch_error_msg);
 
         std_msgs::msg::Float32 elevator_command_msg;
         elevator_command_msg.data = elevator;
         elevator_command_publisher_->publish(elevator_command_msg);
 
-        double aileron_l = neutral_position_.aileron_l + auto_turning_gain.aileron_gain * (pose_received_.roll - auto_turning_target.roll_target);
-        double aileron_r = neutral_position_.aileron_r + auto_turning_gain.aileron_gain * (pose_received_.roll - auto_turning_target.roll_target);
+        double aileron_l;
+        double aileron_r;
+        double roll_error;
+
+        roll_error = pose_received_.roll - auto_turning_target.roll_target;
+
+        aileron_l = neutral_position_.aileron_l + auto_turning_gain.aileron_gain * roll_error;
+        aileron_r = neutral_position_.aileron_r + auto_turning_gain.aileron_gain * roll_error;
 
         std_msgs::msg::Float32 roll_target_msg;
         roll_target_msg.data = auto_turning_target.roll_target;
         roll_target_publisher_->publish(roll_target_msg);
 
         std_msgs::msg::Float32 roll_error_msg;
-        roll_error_msg.data = pose_received_.roll - auto_turning_target.roll_target;
+        roll_error_msg.data = roll_error;
         roll_error_publisher_->publish(roll_error_msg);
 
         std_msgs::msg::Float32 aileron_command_msg;
@@ -282,10 +333,6 @@ private:
 
         // ラダーの制御値を遅延させる
         rudder = neutral_position_.rudder;
-
-        // std_msgs::msg::Float32 rudder_target_msg;
-        // rudder_target_msg.data = auto_turning_target.rudder_target;
-        // rudder_target_publisher_->publish(rudder_target_msg);
 
         std_msgs::msg::Float32 rudder_command_msg;
         rudder_command_msg.data = rudder;
@@ -304,74 +351,6 @@ private:
 
     void auto_eight_control()
     {
-        double throttle;
-        double elevator;
-        double aileron_r;
-        double aileron_l;
-        double rudder;
-
-        if (turning_count == 0)
-        {
-            get_turning_count();
-
-            // 左旋回
-            // 制御値を計算
-            throttle = eight_turning_target.throttle_target;
-            elevator = neutral_position_.elevator + eight_turning_gain.elevator_gain * (eight_turning_target.altitude_target - pose_received_.z);
-            aileron_r = neutral_position_.aileron_r + eight_turning_gain.aileron_gain * (eight_turning_target.roll_target_l - pose_received_.roll); // 左旋回時用のパラメーター
-            aileron_l = neutral_position_.aileron_l + eight_turning_gain.aileron_gain * (eight_turning_target.roll_target_l - pose_received_.roll);
-
-            // ラダーの制御値を遅延させる
-            if (eight_turning_delay.delay_rudder_counter > eight_turning_delay.delay_rudder)
-            {
-                rudder = eight_turning_target.rudder_target;
-            }
-            else
-            {
-                eight_turning_delay.delay_rudder_counter++;
-                rudder = neutral_position_.rudder;
-            }
-        }
-
-        if (turning_count == 1)
-        {
-            get_turning_count();
-
-            // 左旋回
-            // 制御値を計算
-            throttle = eight_turning_target.throttle_target;
-            elevator = neutral_position_.elevator + eight_turning_gain.elevator_gain * (eight_turning_target.altitude_target - pose_received_.z);
-            aileron_r = neutral_position_.aileron_r + eight_turning_gain.aileron_gain * (eight_turning_target.roll_target_l - pose_received_.roll); // 左旋回時用のパラメーター
-            aileron_l = neutral_position_.aileron_l + eight_turning_gain.aileron_gain * (eight_turning_target.roll_target_l - pose_received_.roll);
-
-            // ラダーの制御値を遅延させる
-            if (eight_turning_delay.delay_rudder_counter > eight_turning_delay.delay_rudder)
-            {
-                rudder = eight_turning_target.rudder_target;
-            }
-            else
-            {
-                eight_turning_delay.delay_rudder_counter++;
-                rudder = neutral_position_.rudder;
-            }
-        }
-
-        // 水平に戻す turning_countが変化したら
-        if (turning_count != last_count)
-        {
-        }
-
-        last_count = turning_count;
-
-        // 制御値を送信
-        nokolat2024_msg::msg::Command command;
-        command.throttle = cutoff_min_max(throttle, config.throttle_min, config.throttle_max);
-        command.elevator = cutoff_min_max(elevator, config.elevator_min, config.elevator_max);
-        command.aileron_r = cutoff_min_max(aileron_r, config.aileron_min_r, config.aileron_max_r);
-        command.aileron_l = cutoff_min_max(aileron_l, config.aileron_min_l, config.aileron_max_l);
-        command.rudder = cutoff_min_max(rudder, config.rudder_min, config.rudder_max);
-        command.dropping_device = config.drop_min; // ドロップ装置は常に閉じておく
-        command_publisher_->publish(command);
     }
 
     double cutoff_min_max(double value, double min, double max)
@@ -399,104 +378,6 @@ private:
     {
         auto_turning_target.throttle_target = std::accumulate(throttle_history_.begin(), throttle_history_.end(), 0.0) / throttle_history_.size();
         RCLCPP_INFO(this->get_logger(), "target_throttle[%f]", auto_turning_target.throttle_target);
-    }
-
-    void get_turning_count()
-    {
-        double yaw_diff = 0;
-        // 右回転でyawの値が増えると仮定
-        // 右回転で値マタギが発生したら2π足して値が連続になるようにしてカウントがうまく行くようにする
-        // 左回転で値マタギが発生したら2π引いて〃
-        // それ以外では補正しない
-        double yaw_offset = pose_received_.yaw + yaw_offset_flag * 2 * M_PI;
-
-        if (count_start_flag)
-        {
-            count_start_flag = false;
-            count_start_yaw = yaw_offset;
-            printf("Get initialize \n");
-        }
-
-        yaw_history_.push_back(yaw_offset);
-
-        if (yaw_history_.size() > 2)
-        {
-            for (size_t i = 1; i < yaw_history_.size(); i++)
-            {
-                // 新しいデータから古いデータを引いてyawの変化方向を知る
-                yaw_diff += yaw_history_[i] - yaw_history_[i - 1];
-                printf("差分:%f \n", yaw_diff);
-            }
-            if (yaw_diff > 0) // 右旋回の場合増加
-            {
-                if (pose_received_.yaw > M_PI - yaw_delta)
-                {
-                    yaw_offset_flag = 1; // 2π
-                    printf("右旋回で値またぎが発生した場合 \n");
-                }
-            }
-            else // 左旋回の場合減少
-            {
-                if (pose_received_.yaw < -M_PI + yaw_delta)
-                {
-                    yaw_offset_flag = -1; //-2π
-                    printf("左旋回で値またぎが発生した場合 \n");
-                }
-            }
-        }
-
-        if (yaw_history_.size() > 30)
-        {
-            yaw_history_.pop_front();
-        }
-
-        if (yaw_offset_flag == 1)
-        {
-            // 右旋回だから初期の値からカウント判断値分増加したら旋回1回分。履歴クリア、カウント角度更新。値マタギがあるので2π分足す。⊿分幅をもたせる
-            if (count_start_yaw + turning_count_range + 2 * M_PI - yaw_delta < yaw_offset && yaw_offset < count_start_yaw + turning_count_range + 2 * M_PI + yaw_delta)
-            {
-                turning_count++;
-                count_start_yaw = pose_received_.yaw;
-                yaw_history_.clear();
-                printf("右旋回で変な位置から始めた場合 \n");
-            }
-        }
-        else if (yaw_offset_flag == -1)
-        {
-            // 左旋回だから初期の値からカウント判断値分減少したら旋回1回分。履歴クリア、カウント角度更新。値マタギがあるので2π分引く。⊿分幅をもたせる
-            if (count_start_yaw - turning_count_range - 2 * M_PI - yaw_delta < yaw_offset && yaw_offset < count_start_yaw - turning_count_range - 2 * M_PI + yaw_delta)
-            {
-                turning_count++;
-                count_start_yaw = pose_received_.yaw;
-                yaw_history_.clear();
-                printf("左旋回で変な位置から始めた場合 \n");
-            }
-        }
-        else
-        {
-            if (yaw_diff > 0)
-            {
-                // 右旋回だから初期の値からカウント判断値分増加したら旋回1回分。履歴クリア、カウント角度更新。⊿分幅をもたせる
-                if (count_start_yaw + turning_count_range - yaw_delta < yaw_offset && yaw_offset < count_start_yaw + turning_count_range + yaw_delta)
-                {
-                    turning_count++;
-                    count_start_yaw = pose_received_.yaw;
-                    yaw_history_.clear();
-                    printf("右旋回の場合 \n");
-                }
-            }
-            else
-            {
-                // 左旋回だから初期の値からカウント判断値分減少したら旋回1回分。履歴クリア、カウント角度更新。⊿分幅をもたせる
-                if (count_start_yaw - turning_count_range - yaw_delta < yaw_offset && yaw_offset < count_start_yaw - turning_count_range + yaw_delta)
-                {
-                    turning_count++;
-                    count_start_yaw = pose_received_.yaw;
-                    yaw_history_.clear();
-                    printf("右旋回の場合 \n");
-                }
-            }
-        }
     }
 
     // 制御情報を格納
@@ -533,11 +414,14 @@ private:
     uint turning_count = 0;
     uint last_count;
 
+    rclcpp::TimerBase::SharedPtr timer_;
+    std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+    std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+
     rclcpp::Subscription<nokolat2024_msg::msg::Command>::SharedPtr neutral_position_subscriber_;
     rclcpp::Subscription<nokolat2024_msg::msg::Command>::SharedPtr command_explicit_subscriber_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr mode_subscriber_;
     rclcpp::Subscription<nokolat2024_msg::msg::Rpy>::SharedPtr rpy_subscriber_;
-    rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr altitude_subscriber_;
 
     rclcpp::Publisher<nokolat2024_msg::msg::Command>::SharedPtr command_publisher_;
     rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr throttle_command_publisher_;

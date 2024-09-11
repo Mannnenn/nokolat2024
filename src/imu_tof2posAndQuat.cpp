@@ -58,7 +58,7 @@ private:
         pose.header.frame_id = "base_link";
         pose.header.stamp = this->now();
         z_history_.push_back(calculate_vertical_distance(raw_z, roll, pitch));
-        if (z_history_.size() > 150)
+        if (z_history_.size() > 100)
         {
             z_history_.pop_front();
         }

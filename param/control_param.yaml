@@ -28,7 +28,7 @@ control_info_config:
       aileron:
         p: 800
       pitch:
-        p: -800
+        p: 1
     target:
       altitude: 3.0
       roll: 0.0
