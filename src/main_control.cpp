@@ -124,6 +124,7 @@ public:
         // 制御目標値を取得
         auto_turning_target.roll_target = control_info_config_["auto_turning"]["target"]["roll"].as<double>();
         auto_turning_target.rudder_target = control_info_config_["auto_turning"]["target"]["rudder"].as<double>();
+        auto_turning_target.pitch_target = control_info_config_["auto_turning"]["target"]["pitch"].as<double>();
 
         eight_turning_target.roll_target_l = control_info_config_["eight_turning"]["target"]["roll"]["l"].as<double>();
         eight_turning_target.roll_target_r = control_info_config_["eight_turning"]["target"]["roll"]["r"].as<double>();
@@ -242,7 +243,6 @@ private:
             }
 
             auto_turning_control();
-            //   RCLCPP_INFO(this->get_logger(), "AUTO_TURNING");
         }
 
         if (control_mode_ == nokolat2024::main_control::control_mode_map.at(nokolat2024::main_control::CONTROL_MODE::AUTO_EIGHT))
@@ -255,6 +255,16 @@ private:
 
         if (control_mode_ == nokolat2024::main_control::control_mode_map.at(nokolat2024::main_control::CONTROL_MODE::AUTO_LANDING))
         {
+            if (mode_init)
+            {
+                // auto_turning_target.throttle_target = 692;
+                RCLCPP_INFO(this->get_logger(), "MODE CHANGE");
+                auto_turning_target.altitude_target = get_target_altitude();
+                auto_turning_target.throttle_target = get_target_throttle();
+                mode_init = false;
+                start_mode_time_ = this->now(); // 旋回開始の時間を取得
+            }
+            auto_landing_control();
         }
 
         pub_command_data();
@@ -271,7 +281,8 @@ private:
         // 標高の誤差を計算
         altitude_error = pose_received_.z - auto_turning_target.altitude_target;
         // 標高の誤差にピッチを比例
-        target_pitch = cutoff_min_max(auto_turning_gain.pitch_gain * altitude_error, -M_PI / 6, M_PI / 6);
+        target_pitch = cutoff_min_max(auto_turning_gain.pitch_gain * altitude_error, -M_PI / 6, M_PI / 6) + auto_turning_target.pitch_target;
+
         // ピッチの誤差を計算
         pitch_error = pose_received_.pitch - target_pitch;
 
@@ -298,7 +309,7 @@ private:
         if (diff.seconds() > auto_turning_delay.delay_rudder)
         {
             // 一定時間後にラダーを目標値に変更
-            rudder = auto_turning_target.rudder_target;
+            rudder = neutral_position_.rudder + auto_turning_target.rudder_target;
         }
         else
         {
@@ -315,6 +326,7 @@ private:
     {
         // 制御値を送信
         nokolat2024_msg::msg::Command command;
+        command.header.stamp = this->now();
         command.throttle = cutoff_min_max(throttle, config.throttle_min, config.throttle_max);
         command.elevator = cutoff_min_max(elevator, config.elevator_min, config.elevator_max);
         command.aileron_r = cutoff_min_max(aileron_r, config.aileron_min_r, config.aileron_max_r);

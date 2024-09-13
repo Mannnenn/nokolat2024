@@ -120,6 +120,8 @@ private:
         rpy_msg.pitch = pitch;
         rpy_msg.yaw = yaw_yaw;
 
+        rpy_msg.header.stamp = this->now();
+
         std_msgs::msg::Float32 roll_msg;
         roll_msg.data = roll;
         roll_pub_->publish(roll_msg);

@@ -31,8 +31,9 @@ control_info_config:
         p: 2
       nose_up_pitch: 1.3
     target:
-      roll: 0.0
-      rudder: 1500
+      roll: 0
+      rudder: 0
+      pitch: 0
     delay:
       rudder: 2
 
