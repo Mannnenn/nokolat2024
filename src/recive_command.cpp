@@ -67,16 +67,17 @@ private:
         MANUAL = 0,
         AUTO_TURNING = 1,
         AUTO_RISE_TURNING = 2,
-        AUTO_LANDING = 3,
-        AUTO_EIGHT = 4,
+        AUTO_EIGHT_TURNING = 3,
+        AUTO_LANDING = 4,
     };
 
     const std::unordered_map<int16_t, std::string> control_mode_map = {
         {CONTROL_MODE::MANUAL, "MANUAL"},
         {CONTROL_MODE::AUTO_TURNING, "AUTO_TURNING"},
         {CONTROL_MODE::AUTO_RISE_TURNING, "AUTO_RISE_TURNING"},
+        {CONTROL_MODE::AUTO_EIGHT_TURNING, "AUTO_EIGHT_TURNING"},
         {CONTROL_MODE::AUTO_LANDING, "AUTO_LANDING"},
-        {CONTROL_MODE::AUTO_EIGHT, "AUTO_EIGHT"}};
+    };
 
     rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr subscription_;
     rclcpp::Publisher<nokolat2024_msg::msg::Command>::SharedPtr publisher_custom_;
