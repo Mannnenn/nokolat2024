@@ -109,6 +109,9 @@ public:
         config.drop_min = control_info_config_["chassis"]["drop"]["min"].as<double>();
         RCLCPP_INFO(this->get_logger(), "get chassis parameter");
 
+        // 収束判断の閾値を取得
+        roll_convergence_threshold = control_info_config_["convergence"]["roll"].as<double>();
+
         // ゲインなどのパラメータを取得
         auto_turning_gain.elevator_gain = control_info_config_["auto_turning"]["gain"]["elevator"]["p"].as<double>();
         auto_turning_gain.aileron_gain = control_info_config_["auto_turning"]["gain"]["aileron"]["p"].as<double>();
@@ -117,6 +120,8 @@ public:
 
         eight_turning_gain.elevator_gain = control_info_config_["eight_turning"]["gain"]["elevator"]["p"].as<double>();
         eight_turning_gain.aileron_gain = control_info_config_["eight_turning"]["gain"]["aileron"]["p"].as<double>();
+        eight_turning_gain.pitch_gain = control_info_config_["eight_turning"]["gain"]["pitch"]["p"].as<double>();
+        eight_turning_gain.nose_up_pitch_gain = control_info_config_["eight_turning"]["gain"]["nose_up_pitch"].as<double>();
 
         auto_landing_gain.elevator_gain = control_info_config_["auto_landing"]["gain"]["elevator"]["p"].as<double>();
         auto_landing_gain.aileron_gain = control_info_config_["auto_landing"]["gain"]["aileron"]["p"].as<double>();
@@ -135,6 +140,8 @@ public:
         eight_turning_target.roll_target_r = control_info_config_["eight_turning"]["target"]["roll"]["r"].as<double>();
         eight_turning_target.rudder_target_l = control_info_config_["eight_turning"]["target"]["rudder"]["l"].as<double>();
         eight_turning_target.rudder_target_r = control_info_config_["eight_turning"]["target"]["rudder"]["r"].as<double>();
+        eight_turning_target.pitch_target_l = control_info_config_["eight_turning"]["target"]["pitch"]["l"].as<double>();
+        eight_turning_target.pitch_target_r = control_info_config_["eight_turning"]["target"]["pitch"]["r"].as<double>();
 
         auto_landing_target.throttle_target = control_info_config_["auto_landing"]["target"]["throttle"].as<double>();
         auto_landing_target.roll_target = control_info_config_["auto_landing"]["target"]["roll"].as<double>();
@@ -242,6 +249,7 @@ private:
         if (control_mode_ == nokolat2024::main_control::control_mode_map.at(nokolat2024::main_control::CONTROL_MODE::MANUAL))
         {
             mode_init = true;
+            reset_rotation_count(1);
         }
 
         if (control_mode_ == nokolat2024::main_control::control_mode_map.at(nokolat2024::main_control::CONTROL_MODE::AUTO_TURNING))
@@ -255,11 +263,7 @@ private:
                 roll_align = false;
                 start_mode_time_ = this->now(); // 旋回開始の時間を取得
 
-                for (int i = 0; i < 5; i++)
-                {
-                    pub_rotation_rest_data(1);
-                    rclcpp::sleep_for(std::chrono::milliseconds(10));
-                }
+                reset_rotation_count(1);
             }
             auto_turning_control();
         }
@@ -269,16 +273,14 @@ private:
             if (mode_init)
             {
                 RCLCPP_INFO(this->get_logger(), "MODE CHANGE");
-                auto_turning_target.altitude_target = get_target_altitude();
-                auto_turning_target.throttle_target = get_target_throttle();
+                eight_turning_target.altitude_target = get_target_altitude();
+                eight_turning_target.throttle_target = get_target_throttle();
                 mode_init = false;
                 start_mode_time_ = this->now(); // 旋回開始の時間を取得
+                // 左旋回スタート
+                eight_turning_mode = nokolat2024::main_control::EIGHT_TURNING_MODE::LEFT_TURNING;
 
-                for (int i = 0; i < 5; i++)
-                {
-                    pub_rotation_rest_data(0.75);
-                    rclcpp::sleep_for(std::chrono::milliseconds(10));
-                }
+                reset_rotation_count(0.75);
             }
             auto_eight_control();
         }
@@ -332,7 +334,7 @@ private:
         return elevator;
     }
 
-    double aileron_control(double roll_target, double aileron_gain)
+    double aileron_control_l(double roll_target, double aileron_gain)
     {
         // ロールの誤差を計算
         roll_error = pose_received_.roll - roll_target;
@@ -341,13 +343,22 @@ private:
         return neutral_position_.aileron_l + aileron_gain * roll_error;
     }
 
+    double aileron_control_r(double roll_target, double aileron_gain)
+    {
+        // ロールの誤差を計算
+        roll_error = pose_received_.roll - roll_target;
+
+        // ロールの誤差にエルロンを比例
+        return neutral_position_.aileron_r + aileron_gain * roll_error;
+    }
+
     double rudder_control(double rudder_target, double rudder_delay)
     {
         // ラダーの制御
         double rudder;
 
         // rollが目標値に収束したらラダーの制御を開始
-        if (-0.1 < roll_error && roll_error < 0.1 && !roll_align)
+        if (-roll_convergence_threshold < roll_error && roll_error < roll_convergence_threshold && !roll_align)
         {
             roll_align_time_ = this->now();
             roll_align = true;
@@ -366,6 +377,14 @@ private:
         return rudder;
     }
 
+    double rudder_control_recover(double rudder_target, double rudder_delay)
+    {
+        // ラダーの制御
+        // ラダーを中立位置に戻す
+        rclcpp::Duration from_roll_align = this->now() - roll_align_time_;
+        return neutral_position_.rudder + rudder_target * linearDecrease(from_roll_align.seconds(), rudder_delay);
+    }
+
     double yaw_control(double yaw_target, double yaw_gain)
     {
         // ヨーの誤差を計算
@@ -379,13 +398,23 @@ private:
         return drop_target;
     }
 
+    void reset_rotation_count(double lap_base)
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            // lap_base周でカウントが変化するように
+            pub_rotation_rest_data(lap_base);
+            rclcpp::sleep_for(std::chrono::milliseconds(10));
+        }
+    }
+
     void auto_turning_control()
     {
         // 制御値を計算
         throttle = throttle_control(auto_turning_target.throttle_target);
-        elevator = elevator_control(auto_turning_target.altitude_target, auto_turning_gain.pitch_gain, auto_turning_target.pitch_target, auto_turning_gain.nose_up_pitch_gain, auto_turning_gain.elevator_gain);
-        aileron_l = aileron_control(auto_turning_target.roll_target, auto_turning_gain.aileron_gain);
-        aileron_r = aileron_control(auto_turning_target.roll_target, auto_turning_gain.aileron_gain);
+        elevator = elevator_control(auto_turning_target.altitude_target, eight_turning_gain.pitch_gain, auto_turning_target.pitch_target, auto_turning_gain.nose_up_pitch_gain, auto_turning_gain.elevator_gain);
+        aileron_l = aileron_control_l(auto_turning_target.roll_target, auto_turning_gain.aileron_gain);
+        aileron_r = aileron_control_r(auto_turning_target.roll_target, auto_turning_gain.aileron_gain);
         rudder = rudder_control(auto_turning_target.rudder_target, auto_turning_delay.delay_rudder);
 
         // 投下装置は閉じる
@@ -394,30 +423,84 @@ private:
 
     void auto_eight_control()
     {
-        // 制御値を計算
-        rclcpp::Duration diff = this->now() - start_mode_time_;
+        // 左旋回→左回復→右旋回→右回復→左旋回のサイクル
+        // 左旋回中に回転数が-1になったら右旋回に移行,右旋回中に回転数が1になったら左旋回に移行
 
-        if (turning_count == 1) // 右旋回でこの値になる
+        if (eight_turning_mode == nokolat2024::main_control::EIGHT_TURNING_MODE::LEFT_TURNING)
         {
-            eight_turning_mode = nokolat2024::main_control::EIGHT_TURNING_MODE::NEUTRAL_POSITION;
-            // カウント値が0になるまで100Hzで送信する。0.75回転でカウントアップするように変更
-            for (int i = 0; i < 5; i++)
+            // 制御値を計算
+            throttle = throttle_control(eight_turning_target.throttle_target);
+            elevator = elevator_control(eight_turning_target.altitude_target, eight_turning_gain.pitch_gain, eight_turning_target.pitch_target_l, eight_turning_gain.nose_up_pitch_gain, eight_turning_gain.elevator_gain);
+            aileron_l = aileron_control_l(eight_turning_target.roll_target_l, eight_turning_gain.aileron_gain);
+            aileron_r = aileron_control_r(eight_turning_target.roll_target_l, eight_turning_gain.aileron_gain);
+            rudder = rudder_control(eight_turning_target.rudder_target_l, eight_turning_delay.delay_rudder);
+
+            if (turning_count == -1) // 左旋回でこの値になる
             {
-                pub_rotation_rest_data(0.75);
-                rclcpp::sleep_for(std::chrono::milliseconds(10));
+                eight_turning_mode = nokolat2024::main_control::EIGHT_TURNING_MODE::NEUTRAL_POSITION_L;
+                // カウント値が0になるまで100Hzで送信する。0.75回転でカウントアップするように変更
+                reset_rotation_count(0.75);
+                start_mode_time_ = this->now(); // 水平状態に戻り始める時間を取得
             }
         }
 
-        if (turning_count == -1) // 左旋回でこの値になる
+        if (eight_turning_mode == nokolat2024::main_control::EIGHT_TURNING_MODE::RIGHT_TURNING)
         {
-            eight_turning_mode = nokolat2024::main_control::EIGHT_TURNING_MODE::NEUTRAL_POSITION;
-            // カウント値が0になるまで100Hzで送信する。0.75回転でカウントアップするように変更
-            for (int i = 0; i < 5; i++)
+            // 制御値を計算
+            throttle = throttle_control(eight_turning_target.throttle_target);
+            elevator = elevator_control(eight_turning_target.altitude_target, eight_turning_gain.pitch_gain, eight_turning_target.pitch_target_r, eight_turning_gain.nose_up_pitch_gain, eight_turning_gain.elevator_gain);
+            aileron_l = aileron_control_l(eight_turning_target.roll_target_r, eight_turning_gain.aileron_gain);
+            aileron_r = aileron_control_r(eight_turning_target.roll_target_r, eight_turning_gain.aileron_gain);
+            rudder = rudder_control(eight_turning_target.rudder_target_r, eight_turning_delay.delay_rudder);
+
+            if (turning_count == 1) // 右旋回でこの値になる
             {
-                pub_rotation_rest_data(0.75);
-                rclcpp::sleep_for(std::chrono::milliseconds(10));
+                eight_turning_mode = nokolat2024::main_control::EIGHT_TURNING_MODE::NEUTRAL_POSITION_R;
+                reset_rotation_count(0.75);
+                start_mode_time_ = this->now(); // 水平状態に戻り始める時間を取得
             }
         }
+
+        if (eight_turning_mode == nokolat2024::main_control::EIGHT_TURNING_MODE::NEUTRAL_POSITION_L)
+        {
+            // 水平の基準状態に戻す
+            throttle = throttle_control(eight_turning_target.throttle_target);
+            elevator = elevator_control(eight_turning_target.altitude_target, eight_turning_gain.pitch_gain, 0, eight_turning_gain.nose_up_pitch_gain, eight_turning_gain.elevator_gain);
+            aileron_l = aileron_control_l(0, eight_turning_gain.aileron_gain);
+            aileron_r = aileron_control_r(0, eight_turning_gain.aileron_gain);
+            rudder = rudder_control_recover(eight_turning_target.rudder_target_l, eight_turning_delay.delay_rudder);
+
+            rclcpp::Duration diff = this->now() - start_mode_time_;
+
+            // 一定時間経過+ロールが基準値になったら右旋回に移行
+            if (-roll_convergence_threshold < roll_error && roll_error < roll_convergence_threshold &&
+                diff.seconds() > eight_turning_delay.delay_rudder)
+            {
+                eight_turning_mode = nokolat2024::main_control::EIGHT_TURNING_MODE::RIGHT_TURNING;
+            }
+        }
+
+        if (eight_turning_mode == nokolat2024::main_control::EIGHT_TURNING_MODE::NEUTRAL_POSITION_R)
+        {
+            // 水平の基準状態に戻す
+            throttle = throttle_control(eight_turning_target.throttle_target);
+            elevator = elevator_control(eight_turning_target.altitude_target, eight_turning_gain.pitch_gain, 0, eight_turning_gain.nose_up_pitch_gain, eight_turning_gain.elevator_gain);
+            aileron_l = aileron_control_l(0, eight_turning_gain.aileron_gain);
+            aileron_r = aileron_control_r(0, eight_turning_gain.aileron_gain);
+            rudder = rudder_control_recover(eight_turning_target.rudder_target_r, eight_turning_delay.delay_rudder);
+
+            rclcpp::Duration diff = this->now() - start_mode_time_;
+
+            // 一定時間経過+ロールが基準値になったら左旋回に移行
+            if (-roll_convergence_threshold < roll_error && roll_error < roll_convergence_threshold &&
+                diff.seconds() > eight_turning_delay.delay_rudder)
+            {
+                eight_turning_mode = nokolat2024::main_control::EIGHT_TURNING_MODE::LEFT_TURNING;
+            }
+        }
+
+        // 投下装置は閉じる
+        drop = drop_control(config.drop_min);
     }
 
     void auto_landing_control()
@@ -646,8 +729,25 @@ private:
         }
     }
 
+    double linearDecrease(double x, double threshold)
+    {
+        if (x <= 0)
+        {
+            return 1.0;
+        }
+        else if (x >= threshold)
+        {
+            return 0.0;
+        }
+        else
+        {
+            return 1 - x / threshold;
+        }
+    }
+
     // 制御情報を格納
     nokolat2024::main_control::ControlInfo_config config;
+    double roll_convergence_threshold;
 
     nokolat2024::main_control::ControlInfo_gain auto_turning_gain;
     nokolat2024::main_control::ControlInfo_target auto_turning_target;

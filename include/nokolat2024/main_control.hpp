@@ -25,6 +25,9 @@ namespace nokolat2024
 {
     namespace main_control
     {
+        const bool TRANSFER = 0;
+        const bool RECOVER = 1;
+
         // Define control mode
         enum CONTROL_MODE
         {
@@ -39,7 +42,8 @@ namespace nokolat2024
         {
             LEFT_TURNING = 0,
             RIGHT_TURNING = 1,
-            NEUTRAL_POSITION = 2,
+            NEUTRAL_POSITION_L = 2,
+            NEUTRAL_POSITION_R = 3,
         };
 
         // マップを初期化
@@ -93,6 +97,8 @@ namespace nokolat2024
             double roll_target_r;
             double rudder_target_l;
             double rudder_target_r;
+            double pitch_target_l;
+            double pitch_target_r;
         };
         struct Command
         {
