@@ -32,11 +32,11 @@ control_info_config:
       aileron:
         p: 650
       pitch:
-        p: 0.25
+        p: -0.25
       nose_up_pitch: 1.2
     target:
-      roll: -0.35
-      rudder: -200
+      roll: 0.32
+      rudder: 200
       pitch: -0.2
     delay:
       rudder: 0.5
