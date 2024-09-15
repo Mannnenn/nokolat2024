@@ -37,16 +37,12 @@ public:
         rpy_subscriber_ = this->create_subscription<nokolat2024_msg::msg::Rpy>(input_angular_topic_name, qos, std::bind(&RotationCounterNode::rpy_callback, this, std::placeholders::_1));
         angular_velocity_subscriber_ = this->create_subscription<nokolat2024_msg::msg::Rpy>(input_angular_velocity_topic_name, qos, std::bind(&RotationCounterNode::angular_velocity_callback, this, std::placeholders::_1));
 
-        rclcpp::QoS qos_rest(200);
-        qos_rest.reliable();
+        rclcpp::QoS qos_rest = rclcpp::QoS(rclcpp::KeepLast(10)).reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);
         counter_reset_subscriber_ = this->create_subscription<std_msgs::msg::Float32>(input_counter_reset_topic_name, qos_rest, std::bind(&RotationCounterNode::counter_reset_callback, this, std::placeholders::_1));
 
         RCLCPP_INFO(this->get_logger(), "rotation_counter_node has been started.");
 
-        rclcpp::QoS qos_settings(10);
-        qos_settings.reliable();
-
-        rotation_counter_pub_ = this->create_publisher<std_msgs::msg::Float32>(output_rotation_counter_topic_name, qos_settings);
+        rotation_counter_pub_ = this->create_publisher<std_msgs::msg::Float32>(output_rotation_counter_topic_name, qos_rest);
 
         beyond_boundary_judgment_criteria = 0.1;
         lap_judgment_criteria = 0.1;

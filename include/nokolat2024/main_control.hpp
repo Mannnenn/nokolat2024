@@ -35,6 +35,13 @@ namespace nokolat2024
             AUTO_EIGHT = 4,
         };
 
+        enum EIGHT_TURNING_MODE
+        {
+            LEFT_TURNING = 0,
+            RIGHT_TURNING = 1,
+            NEUTRAL_POSITION = 2,
+        };
+
         // マップを初期化
         const std::unordered_map<int16_t, std::string> control_mode_map = {
             {CONTROL_MODE::MANUAL, "MANUAL"},
@@ -64,6 +71,7 @@ namespace nokolat2024
         {
             double throttle_gain;
             double elevator_gain;
+            double rudder_gain;
             double aileron_gain;
             double pitch_gain;
             double nose_up_pitch_gain;
@@ -106,8 +114,8 @@ namespace nokolat2024
 
         struct DelayWindow
         {
-            uint delay_rudder;
-            uint delay_rudder_counter;
+            double delay_rudder;
+            double delay_accel;
         };
     } // namespace main_control
 } // namespace nokolat2024
