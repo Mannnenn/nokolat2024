@@ -32,10 +32,10 @@ control_info_config:
       nose_up_pitch: 1.4
     target:
       roll: 0
-      rudder: 0
+      rudder: 300
       pitch: -0.1
     delay:
-      rudder: 2
+      rudder: 1
 
   eight_turning:
     gain:

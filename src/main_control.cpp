@@ -172,7 +172,7 @@ public:
         }
 
         timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(90), // 20ms
+            std::chrono::milliseconds(40), // 早すぎると通信エラーが発生する
             std::bind(&MainControlNode::timer_callback, this));
     }
 
@@ -252,6 +252,7 @@ private:
                 auto_turning_target.altitude_target = get_target_altitude();
                 auto_turning_target.throttle_target = get_target_throttle();
                 mode_init = false;
+                roll_align = false;
                 start_mode_time_ = this->now(); // 旋回開始の時間を取得
 
                 for (int i = 0; i < 5; i++)
@@ -302,98 +303,119 @@ private:
         pub_ui_data();
     }
 
-    void auto_turning_control()
+    double throttle_control(double throttle_target)
     {
-        // 制御値を計算
+        return throttle_target;
+    }
 
-        // スロットルはそのままを維持するように
-        throttle = auto_turning_target.throttle_target;
+    double elevator_control(double altitude_target, double pitch_gain, double pitch_target, double nose_up_pitch_gain, double elevator_gain)
+    {
+        double elevator;
 
         // 標高の誤差を計算
-        altitude_error = pose_received_.z - auto_turning_target.altitude_target;
+        altitude_error = pose_received_.z - altitude_target;
         // 標高の誤差にピッチを比例
-        target_pitch = cutoff_min_max(auto_turning_gain.pitch_gain * altitude_error + auto_turning_target.pitch_target, -M_PI / 6, M_PI / 6);
-
+        target_pitch = cutoff_min_max(pitch_gain * altitude_error + pitch_target, -M_PI / 6, M_PI / 6);
         // ピッチの誤差を計算
         pitch_error = pose_received_.pitch - target_pitch;
 
         // ピッチの誤差にエレベーターを比例、機首上げがよくなるように係数を変更
         if (target_pitch >= 0) // 機首下げ
         {
-            elevator = neutral_position_.elevator + auto_turning_gain.elevator_gain * pitch_error;
+            elevator = neutral_position_.elevator + elevator_gain * pitch_error;
         }
         if (target_pitch < 0) // 機首上げ
         {
-            elevator = neutral_position_.elevator + auto_turning_gain.nose_up_pitch_gain * auto_turning_gain.elevator_gain * pitch_error;
+            elevator = neutral_position_.elevator + nose_up_pitch_gain * elevator_gain * pitch_error;
         }
 
+        return elevator;
+    }
+
+    double aileron_control(double roll_target, double aileron_gain)
+    {
         // ロールの誤差を計算
-        roll_error = pose_received_.roll - auto_turning_target.roll_target;
+        roll_error = pose_received_.roll - roll_target;
 
         // ロールの誤差にエルロンを比例
-        aileron_l = neutral_position_.aileron_l + auto_turning_gain.aileron_gain * roll_error;
-        aileron_r = neutral_position_.aileron_r + auto_turning_gain.aileron_gain * roll_error;
+        return neutral_position_.aileron_l + aileron_gain * roll_error;
+    }
 
-        // ラダーの制御値はそのまま
-        rclcpp::Duration diff = this->now() - start_mode_time_;
+    double rudder_control(double rudder_target, double rudder_delay)
+    {
+        // ラダーの制御
+        double rudder;
 
-        if (diff.seconds() > auto_turning_delay.delay_rudder)
+        // rollが目標値に収束したらラダーの制御を開始
+        if (-0.1 < roll_error && roll_error < 0.1 && !roll_align)
         {
-            // 一定時間後にラダーを目標値に変更
-            rudder = neutral_position_.rudder + auto_turning_target.rudder_target;
+            roll_align_time_ = this->now();
+            roll_align = true;
+        }
+        if (roll_align)
+        {
+            rclcpp::Duration from_roll_align = this->now() - roll_align_time_;
+            // 徐々にラダーの目標値を目標値に近づける
+            rudder = neutral_position_.rudder + rudder_target * linearIncrease(from_roll_align.seconds(), rudder_delay);
         }
         else
         {
-            // 一定時間前は中立位置に保つ
             rudder = neutral_position_.rudder;
         }
 
-        drop = config.drop_min;
+        return rudder;
+    }
+
+    double yaw_control(double yaw_target, double yaw_gain)
+    {
+        // ヨーの誤差を計算
+        yaw_error = pose_received_.yaw - yaw_target;
+        // ヨーの誤差にラダーを比例
+        return neutral_position_.rudder + yaw_gain * yaw_error;
+    }
+
+    double drop_control(double drop_target)
+    {
+        return drop_target;
+    }
+
+    void auto_turning_control()
+    {
+        // 制御値を計算
+        throttle = throttle_control(auto_turning_target.throttle_target);
+        elevator = elevator_control(auto_turning_target.altitude_target, auto_turning_gain.pitch_gain, auto_turning_target.pitch_target, auto_turning_gain.nose_up_pitch_gain, auto_turning_gain.elevator_gain);
+        aileron_l = aileron_control(auto_turning_target.roll_target, auto_turning_gain.aileron_gain);
+        aileron_r = aileron_control(auto_turning_target.roll_target, auto_turning_gain.aileron_gain);
+        rudder = rudder_control(auto_turning_target.rudder_target, auto_turning_delay.delay_rudder);
+
+        // 投下装置は閉じる
+        drop = drop_control(config.drop_min);
     }
 
     void auto_eight_control()
     {
+        // 制御値を計算
         rclcpp::Duration diff = this->now() - start_mode_time_;
 
-        // 旋回の制御値を計算
-        if (diff.seconds() < 1)
+        if (turning_count == 1) // 右旋回でこの値になる
         {
-            throttle = auto_turning_target.throttle_target;
-
-            elevator = neutral_position_.elevator;
-
-            aileron_l = neutral_position_.aileron_l;
-            aileron_r = neutral_position_.aileron_r;
-
-            rudder = neutral_position_.rudder;
-
-            drop = config.drop_min;
-        }
-        if (diff.seconds() >= 1 && diff.seconds() < 3)
-        {
-            // 制御値を計算
-            rclcpp::Duration diff = this->now() - start_mode_time_;
-
-            if (turning_count == 1) // 右旋回でこの値になる
+            eight_turning_mode = nokolat2024::main_control::EIGHT_TURNING_MODE::NEUTRAL_POSITION;
+            // カウント値が0になるまで100Hzで送信する。0.75回転でカウントアップするように変更
+            for (int i = 0; i < 5; i++)
             {
-                eight_turning_mode = nokolat2024::main_control::EIGHT_TURNING_MODE::NEUTRAL_POSITION;
-                // カウント値が0になるまで100Hzで送信する。0.75回転でカウントアップするように変更
-                while (turning_count == 0)
-                {
-                    pub_rotation_rest_data(0.75);
-                    rclcpp::sleep_for(std::chrono::milliseconds(10));
-                }
+                pub_rotation_rest_data(0.75);
+                rclcpp::sleep_for(std::chrono::milliseconds(10));
             }
+        }
 
-            if (turning_count == -1) // 左旋回でこの値になる
+        if (turning_count == -1) // 左旋回でこの値になる
+        {
+            eight_turning_mode = nokolat2024::main_control::EIGHT_TURNING_MODE::NEUTRAL_POSITION;
+            // カウント値が0になるまで100Hzで送信する。0.75回転でカウントアップするように変更
+            for (int i = 0; i < 5; i++)
             {
-                eight_turning_mode = nokolat2024::main_control::EIGHT_TURNING_MODE::NEUTRAL_POSITION;
-                // カウント値が0になるまで100Hzで送信する。0.75回転でカウントアップするように変更
-                while (turning_count == 0)
-                {
-                    pub_rotation_rest_data(0.75);
-                    rclcpp::sleep_for(std::chrono::milliseconds(10));
-                }
+                pub_rotation_rest_data(0.75);
+                rclcpp::sleep_for(std::chrono::milliseconds(10));
             }
         }
     }
@@ -608,6 +630,22 @@ private:
         return std::accumulate(throttle_history_.begin(), throttle_history_.end(), 0.0) / throttle_history_.size();
     }
 
+    double linearIncrease(double x, double threshold)
+    {
+        if (x <= 0)
+        {
+            return 0.0;
+        }
+        else if (x >= threshold)
+        {
+            return 1.0;
+        }
+        else
+        {
+            return x / threshold;
+        }
+    }
+
     // 制御情報を格納
     nokolat2024::main_control::ControlInfo_config config;
 
@@ -637,6 +675,9 @@ private:
     std::deque<double> throttle_history_;
 
     rclcpp::Time start_mode_time_;
+
+    bool roll_align = false;
+    rclcpp::Time roll_align_time_;
 
     double turning_count;
 
