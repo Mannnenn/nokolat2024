@@ -117,6 +117,7 @@ namespace nokolat2024
             double rudder_target_r;
             double pitch_target_l;
             double pitch_target_r;
+            double pitch_target_recover;
         };
         struct Command
         {

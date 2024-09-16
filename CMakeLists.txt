@@ -113,6 +113,9 @@ target_link_libraries(path_generator Eigen3::Eigen)
 add_executable(rotation_counter src/rotation_counter.cpp)
 ament_target_dependencies(rotation_counter rclcpp std_msgs nokolat2024_msg)
 
+add_executable(pub_ui_command src/pub_ui_command.cpp)
+ament_target_dependencies(pub_ui_command rclcpp std_msgs geometry_msgs tf2_ros nokolat2024_msg)
+
 install(TARGETS
   tf_publisher
   image_diff_extraction
@@ -131,6 +134,7 @@ install(TARGETS
   send_command
   path_generator
   rotation_counter
+  pub_ui_command
   DESTINATION lib/${PROJECT_NAME})
 
 

@@ -62,7 +62,7 @@ control_info_config:
         rudder: -100
     delay:
       rudder: 0.5
-      throttle: 5
+      throttle: 6
 
   eight_turning:
     gain:
@@ -83,6 +83,7 @@ control_info_config:
       pitch:
         r: -0.2
         l: -0.2
+        recover: -0.1
     delay:
       rudder: 0.5
 
