@@ -51,16 +51,15 @@ control_info_config:
         p: 0.25
       nose_up_pitch: 1.2
     target:
-      roll: 0.32
-      rudder: 200
+      roll: -0.35
+      rudder: -200
       pitch: -0.2
-      lower_altitude: 1.5
-      upper_altitude: 5
+      upper_altitude: 2.0
       rise:
-        throttle: 0
-        roll: 0.35
+        throttle: 100
+        roll: -0.35
         pitch: -0.2
-        rudder: 250
+        rudder: -100
     delay:
       rudder: 0.5
       throttle: 5

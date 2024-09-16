@@ -145,7 +145,6 @@ public:
         rise_turning_target.roll_target = control_info_config_["rise_turning"]["target"]["roll"].as<double>();
         rise_turning_target.rudder_target = control_info_config_["rise_turning"]["target"]["rudder"].as<double>();
         rise_turning_target.pitch_target = control_info_config_["rise_turning"]["target"]["pitch"].as<double>();
-        rise_turning_target.lower_altitude_target = control_info_config_["rise_turning"]["target"]["lower_altitude"].as<double>();
         rise_turning_target.higher_altitude_target = control_info_config_["rise_turning"]["target"]["upper_altitude"].as<double>();
         rise_turning_target.rise_throttle_target = control_info_config_["rise_turning"]["target"]["rise"]["throttle"].as<double>();
         rise_turning_target.rise_roll_target = control_info_config_["rise_turning"]["target"]["rise"]["roll"].as<double>();
@@ -294,11 +293,10 @@ private:
             if (mode_init)
             {
                 RCLCPP_INFO(this->get_logger(), "MODE: AUTO_RISE_TURNING");
-                rise_turning_target.altitude_target = get_target_altitude();
+                rise_turning_target.lower_altitude_target = get_target_altitude();
                 rise_turning_target.throttle_target = get_target_throttle();
                 mode_init = false;
                 roll_align = false;
-                rise_success = false;
                 start_mode_time_ = ros_clock->now(); // 旋回開始の時間を取得
 
                 // 低高度旋回から開始
@@ -390,7 +388,7 @@ private:
         return neutral_position_.aileron_r + aileron_gain * roll_error;
     }
 
-    double rudder_control(double rudder_target, double rudder_delay)
+    double rudder_control(double rudder_target, double rudder_delay, double prev_target = 0)
     {
         // ラダーの制御
         double rudder;
@@ -405,7 +403,8 @@ private:
         {
             rclcpp::Duration from_roll_align = ros_clock->now() - roll_align_time_;
             // 徐々にラダーの目標値を目標値に近づける
-            rudder = neutral_position_.rudder + rudder_target * linearIncrease(from_roll_align.seconds(), rudder_delay);
+            // 上昇旋回時は定常旋回時より速度を上げるため、ラダーをより変化させる。変化前は(ニュートラル+定常)ラダー,変化後は(ニュートラル+定常+上昇)ラダー
+            rudder = neutral_position_.rudder + prev_target + rudder_target * linearIncrease(from_roll_align.seconds(), rudder_delay);
         }
         else
         {
@@ -415,12 +414,13 @@ private:
         return rudder;
     }
 
-    double rudder_control_recover(double rudder_target, double rudder_delay)
+    double rudder_control_recover(double rudder_target, double rudder_delay, double prev_target = 0)
     {
         // ラダーの制御
         // ラダーを中立位置に戻す
+        // 上昇後にもとの定常ラダーに戻す。変化前は(ニュートラル+定常+上昇)、ラダー変化後は(ニュートラル+定常)ラダー
         rclcpp::Duration from_roll_align = ros_clock->now() - recover_start_time_;
-        return neutral_position_.rudder + rudder_target * linearDecrease(from_roll_align.seconds(), rudder_delay);
+        return neutral_position_.rudder + prev_target + rudder_target * linearDecrease(from_roll_align.seconds(), rudder_delay);
     }
 
     double yaw_control(double yaw_target, double yaw_gain)
@@ -469,10 +469,11 @@ private:
             aileron_r = aileron_control_r(rise_turning_target.roll_target, rise_turning_gain.aileron_gain);
             rudder = rudder_control(rise_turning_target.rudder_target, rise_turning_delay.delay_rudder);
 
-            if (turning_count < -2)
+            if (turning_count >= 2)
             {
                 rise_turning_mode = nokolat2024::main_control::RISE_TURNING_MODE::RISE_TURNING;
                 start_mode_time_ = ros_clock->now();
+                RCLCPP_INFO(this->get_logger(), "MODE::CHANGE TO RISE");
             }
         }
 
@@ -488,22 +489,24 @@ private:
             elevator = elevator_control(rise_turning_target.altitude_target, rise_turning_gain.pitch_gain, rise_turning_target.rise_pitch_target, rise_turning_gain.nose_up_pitch_gain, rise_turning_gain.elevator_gain);
             aileron_l = aileron_control_l(rise_turning_target.rise_roll_target, rise_turning_gain.aileron_gain);
             aileron_r = aileron_control_r(rise_turning_target.rise_roll_target, rise_turning_gain.aileron_gain);
-            rudder = rudder_control(rise_turning_target.rise_rudder_target, rise_turning_delay.delay_rudder);
+            rudder = rudder_control(rise_turning_target.rise_rudder_target, rise_turning_delay.delay_rudder, rise_turning_target.rudder_target);
 
             if (get_target_altitude() > rise_turning_target.higher_altitude_target)
             {
                 rise_turning_mode = nokolat2024::main_control::RISE_TURNING_MODE::HIGHER_TURNING;
                 reset_rotation_count(1);
+                recover_start_time_ = ros_clock->now(); // ラダーを定常旋回の位置に戻す
+                RCLCPP_INFO(this->get_logger(), "MODE::CHANGE TO TURN");
             }
         }
 
         if (rise_turning_mode == nokolat2024::main_control::RISE_TURNING_MODE::HIGHER_TURNING) // 低い高度で2周する,上昇が成功していない間は
         {
             throttle = throttle_control(rise_turning_target.throttle_target);
-            elevator = elevator_control(rise_turning_target.lower_altitude_target, rise_turning_gain.pitch_gain, rise_turning_target.pitch_target, rise_turning_gain.nose_up_pitch_gain, rise_turning_gain.elevator_gain);
+            elevator = elevator_control(rise_turning_target.higher_altitude_target, rise_turning_gain.pitch_gain, rise_turning_target.pitch_target, rise_turning_gain.nose_up_pitch_gain, rise_turning_gain.elevator_gain);
             aileron_l = aileron_control_l(rise_turning_target.roll_target, rise_turning_gain.aileron_gain);
             aileron_r = aileron_control_r(rise_turning_target.roll_target, rise_turning_gain.aileron_gain);
-            rudder = rudder_control(rise_turning_target.rudder_target, rise_turning_delay.delay_rudder);
+            rudder = rudder_control_recover(rise_turning_target.rudder_target, rise_turning_delay.delay_rudder);
         }
     }
 
@@ -891,8 +894,6 @@ private:
     bool roll_align = false;
     rclcpp::Time roll_align_time_;
     rclcpp::Time recover_start_time_;
-
-    bool rise_success = false;
 
     double turning_count;
 
