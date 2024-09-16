@@ -38,6 +38,13 @@ namespace nokolat2024
             AUTO_LANDING = 4,
         };
 
+        enum RISE_TURNING_MODE
+        {
+            LOWER_TURNING = 0,
+            RISE_TURNING = 1,
+            HIGHER_TURNING = 2,
+        };
+
         enum EIGHT_TURNING_MODE
         {
             LEFT_TURNING = 0,

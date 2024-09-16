@@ -44,48 +44,48 @@ control_info_config:
   rise_turning:
     gain:
       elevator:
-        p: 10
+        p: 700
       aileron:
-        p: 800
+        p: 650
       pitch:
-        p: 0.3
-      nose_up_pitch: 1.4
+        p: 0.25
+      nose_up_pitch: 1.2
     target:
-      roll: 0
-      rudder: 0
-      pitch: -0.1
-      lower_altitude: 0.5
-      upper_altitude: 1.5
+      roll: 0.32
+      rudder: 200
+      pitch: -0.2
+      lower_altitude: 1.5
+      upper_altitude: 5
       rise:
-        throttle: 1000
-        roll: 0
-        pitch: -0.1
-        rudder: 0
+        throttle: 0
+        roll: 0.35
+        pitch: -0.2
+        rudder: 250
     delay:
-      rudder: 3
-      throttle: 1200
+      rudder: 0.5
+      throttle: 5
 
   eight_turning:
     gain:
       elevator:
-        p: 10
+        p: 700
       aileron:
-        p: 800
+        p: 650
       pitch:
-        p: 0.3
-      nose_up_pitch: 1.4
+        p: 0.25
+      nose_up_pitch: 1.2
     target:
       roll:
-        l: 0.0
-        r: 0.0
+        r: 0.32
+        l: -0.35
       rudder:
-        l: 300
-        r: 300
+        r: 200
+        l: -200
       pitch:
-        l: -0.1
-        r: -0.1
+        r: -0.2
+        l: -0.2
     delay:
-      rudder: 3
+      rudder: 0.5
 
   auto_landing:
     gain:
