@@ -32,7 +32,7 @@ control_info_config:
       aileron:
         p: 650
       pitch:
-        p: -0.25
+        p: -0.23
       nose_up_pitch: 1.2
     target:
       roll: 0.32
