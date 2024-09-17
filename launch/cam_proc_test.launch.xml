@@ -105,11 +105,17 @@
             <param name="output_position_stamped_topic_name" value="$(var position_stamped)" />
         </node>
 
-        <node pkg="nokolat2024" exec="pub_vel" name="pub_vel" output="screen">
+        <node pkg="nokolat2024" exec="pub_vel_link" name="pub_vel_link"
+            output="screen">
+            <param name="input_position_topic_name" value="$(var position_stamped)" />
+            <param name="input_altitude_stamped_topic_name" value="$(var altitude)" />
+        </node>
+
+        <node pkg="nokolat2024" exec="pub_vel" name="pub_vel"
+            output="screen">
             <param name="input_position_stamped_topic_name" value="$(var position_stamped)" />
             <param name="output_twist_topic_name" value="$(var velocity)" />
         </node>
-
 
     </group>
 

@@ -25,6 +25,8 @@ public:
         subscription_ = this->create_subscription<geometry_msgs::msg::PointStamped>(
             input_position_stamped_topic_name, 10, std::bind(&VelocityCalculator::pointCallback, this, std::placeholders::_1));
         publisher_ = this->create_publisher<geometry_msgs::msg::TwistStamped>(output_twist_topic_name, 10);
+
+        last_time = this->now();
     }
 
 private:
@@ -37,9 +39,7 @@ private:
         }
 
         // Calculate time difference
-        rclcpp::Time current_time = msg->header.stamp;
-        rclcpp::Time last_time = last_point_->header.stamp;
-        rclcpp::Duration duration = current_time - last_time;
+        rclcpp::Duration duration = this->now() - last_time;
 
         double dt = duration.seconds();
 
@@ -58,19 +58,6 @@ private:
         velocity.transform.translation.y = dy / dt;
         velocity.transform.translation.z = dz / dt;
 
-        // Transform velocity to base_link frame
-        geometry_msgs::msg::TransformStamped transformStamped;
-        try
-        {
-            transformStamped = tf_buffer_.lookupTransform(msg->header.frame_id, "base_link", tf2::TimePointZero);
-            tf2::doTransform(velocity, velocity, transformStamped);
-        }
-        catch (tf2::TransformException &ex)
-        {
-            RCLCPP_WARN(this->get_logger(), "Could not transform velocity: %s", ex.what());
-            return;
-        }
-
         // Calculate the norm of the velocity
         double velocity_norm = std::sqrt(
             std::pow(velocity.transform.translation.x, 2) +
@@ -78,20 +65,24 @@ private:
             std::pow(velocity.transform.translation.z, 2));
 
         // Check if the velocity norm is too large
-        double max_velocity_norm = 30.0; // Define a threshold for maximum velocity norm
+        double max_velocity_norm = 15.0; // Define a threshold for maximum velocity norm
         if (velocity_norm > max_velocity_norm)
         {
-            RCLCPP_WARN(this->get_logger(), "Velocity norm too large: %f", velocity_norm);
+            // RCLCPP_WARN(this->get_logger(), "Velocity norm too large: %f", velocity_norm);
+            last_point_ = msg;
+            last_time = this->now();
             return;
         }
 
         geometry_msgs::msg::TwistStamped velocity_msg;
-        velocity_msg.header.stamp = current_time;
-        velocity_msg.header.frame_id = "base_link";
+        velocity_msg.header.stamp = this->now();
+        velocity_msg.header.frame_id = "vel_link";
         velocity_msg.twist.linear = velocity.transform.translation;
 
         publisher_->publish(velocity_msg);
+
         last_point_ = msg;
+        last_time = this->now();
     }
 
     rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr subscription_;
@@ -99,6 +90,8 @@ private:
     geometry_msgs::msg::PointStamped::SharedPtr last_point_;
     tf2_ros::Buffer tf_buffer_;
     tf2_ros::TransformListener tf_listener_;
+
+    rclcpp::Time last_time;
 };
 
 int main(int argc, char *argv[])

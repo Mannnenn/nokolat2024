@@ -144,13 +144,9 @@ private:
             z_history_.pop_front();
         }
 
-        double avg_x = std::accumulate(x_history_.begin(), x_history_.end(), 0.0) / x_history_.size();
-        double avg_y = std::accumulate(y_history_.begin(), y_history_.end(), 0.0) / y_history_.size();
-        double avg_z = std::accumulate(z_history_.begin(), z_history_.end(), 0.0) / z_history_.size();
-
-        position_.x = avg_x;
-        position_.y = avg_y;
-        position_.z = avg_z;
+        position_.x = std::accumulate(x_history_.begin(), x_history_.end(), 0.0) / x_history_.size();
+        position_.y = std::accumulate(y_history_.begin(), y_history_.end(), 0.0) / y_history_.size();
+        position_.z = std::accumulate(z_history_.begin(), z_history_.end(), 0.0) / z_history_.size();
 
         // printf("x: %f, y: %f\n", position_.x, position_.z);
 

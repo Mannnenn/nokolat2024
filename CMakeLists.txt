@@ -119,6 +119,9 @@ ament_target_dependencies(pub_ui_command rclcpp std_msgs geometry_msgs tf2_ros n
 add_executable(pub_vel src/pub_vel.cpp)
 ament_target_dependencies(pub_vel rclcpp geometry_msgs tf2 tf2_ros tf2_geometry_msgs)
 
+add_executable(pub_vel_link src/pub_vel_link.cpp)
+ament_target_dependencies(pub_vel_link rclcpp geometry_msgs tf2 tf2_ros tf2_geometry_msgs)
+
 install(TARGETS
   tf_publisher
   image_diff_extraction
@@ -126,6 +129,7 @@ install(TARGETS
   position_estimation
   point2pointStamped
   pub_vel
+  pub_vel_link
   cog_corrected
   pub_command
   image_sync_node
