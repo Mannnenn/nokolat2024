@@ -1,5 +1,8 @@
 #include <rclcpp/rclcpp.hpp>
 
+#include <deque>
+
+#include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/point_stamped.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -48,41 +51,46 @@ private:
             return;
         }
 
-        // Calculate velocity in the world frame
-        double dx = msg->point.x - last_point_->point.x;
-        double dy = msg->point.y - last_point_->point.y;
-        double dz = msg->point.z - last_point_->point.z;
+        point_buffer_.push_back(msg);
 
-        geometry_msgs::msg::TransformStamped velocity;
-        velocity.transform.translation.x = dx / dt;
-        velocity.transform.translation.y = dy / dt;
-        velocity.transform.translation.z = dz / dt;
+        geometry_msgs::msg::Point delta;
 
-        // Calculate the norm of the velocity
-        double velocity_norm = std::sqrt(
-            std::pow(velocity.transform.translation.x, 2) +
-            std::pow(velocity.transform.translation.y, 2) +
-            std::pow(velocity.transform.translation.z, 2));
-
-        // Check if the velocity norm is too large
-        double max_velocity_norm = 15.0; // Define a threshold for maximum velocity norm
-        if (velocity_norm > max_velocity_norm)
+        if (point_buffer_.size() > 5)
         {
-            // RCLCPP_WARN(this->get_logger(), "Velocity norm too large: %f", velocity_norm);
+            delta.x = (point_buffer_[4]->point.x - point_buffer_[0]->point.x) / (4 * dt) + (point_buffer_[3]->point.x - point_buffer_[1]->point.x) / (2 * dt);
+            delta.y = (point_buffer_[4]->point.y - point_buffer_[0]->point.y) / (4 * dt) + (point_buffer_[3]->point.y - point_buffer_[1]->point.y) / (2 * dt);
+            delta.z = (point_buffer_[4]->point.z - point_buffer_[0]->point.z) / (4 * dt) + (point_buffer_[3]->point.z - point_buffer_[1]->point.z) / (2 * dt);
+
+            point_buffer_.pop_front();
+
+            // Calculate the norm of the velocity
+            double velocity_norm = std::sqrt(
+                std::pow(delta.y, 2) +
+                std::pow(delta.x, 2) +
+                std::pow(delta.z, 2));
+
+            // Check if the velocity norm is too large
+            double max_velocity_norm = 15.0; // Define a threshold for maximum velocity norm
+            if (velocity_norm > max_velocity_norm)
+            {
+                // RCLCPP_WARN(this->get_logger(), "Velocity norm too large: %f", velocity_norm);
+                last_point_ = msg;
+                last_time = this->now();
+                return;
+            }
+
+            geometry_msgs::msg::TwistStamped velocity_msg;
+            velocity_msg.header.stamp = this->now();
+            velocity_msg.header.frame_id = "vel_link";
+            velocity_msg.twist.linear.x = delta.x;
+            velocity_msg.twist.linear.y = delta.y;
+            velocity_msg.twist.linear.z = delta.z;
+
+            publisher_->publish(velocity_msg);
+
             last_point_ = msg;
             last_time = this->now();
-            return;
         }
-
-        geometry_msgs::msg::TwistStamped velocity_msg;
-        velocity_msg.header.stamp = this->now();
-        velocity_msg.header.frame_id = "vel_link";
-        velocity_msg.twist.linear = velocity.transform.translation;
-
-        publisher_->publish(velocity_msg);
-
-        last_point_ = msg;
-        last_time = this->now();
     }
 
     rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr subscription_;
@@ -90,6 +98,8 @@ private:
     geometry_msgs::msg::PointStamped::SharedPtr last_point_;
     tf2_ros::Buffer tf_buffer_;
     tf2_ros::TransformListener tf_listener_;
+
+    std::deque<geometry_msgs::msg::PointStamped::SharedPtr> point_buffer_;
 
     rclcpp::Time last_time;
 };
