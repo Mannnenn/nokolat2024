@@ -10,15 +10,15 @@ public:
 
         // パラメータの宣言
         this->declare_parameter<std::string>("input_position_topic_name", "/position");
-        this->declare_parameter<std::string>("output_stamped_topic_name", "/path");
+        this->declare_parameter<std::string>("output_position_stamped_topic_name", "/path");
 
         // パラメータの取得
         std::string input_position_topic_name;
         this->get_parameter("input_position_topic_name", input_position_topic_name);
-        std::string output_stamped_topic_name;
-        this->get_parameter("output_stamped_topic_name", output_stamped_topic_name);
+        std::string output_position_stamped_topic_name;
+        this->get_parameter("output_position_stamped_topic_name", output_position_stamped_topic_name);
 
-        publisher_ = this->create_publisher<geometry_msgs::msg::PointStamped>(output_stamped_topic_name, 10);
+        publisher_ = this->create_publisher<geometry_msgs::msg::PointStamped>(output_position_stamped_topic_name, 10);
         subscriber_ = this->create_subscription<geometry_msgs::msg::Point>(
             input_position_topic_name, 10, std::bind(&PathPublisher::point_callback, this, std::placeholders::_1));
     }
