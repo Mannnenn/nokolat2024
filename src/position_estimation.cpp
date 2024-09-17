@@ -2,6 +2,8 @@
 
 #include <iostream>
 #include <deque>
+#include <cmath>
+#include <numeric>
 
 #include <std_msgs/msg/float32.hpp>
 #include <geometry_msgs/msg/point.hpp>
@@ -74,6 +76,11 @@ public:
 
         center_x = camera_info_right["K"][2].as<double>();
         center_y = camera_info_right["K"][5].as<double>();
+
+        // 初期は0,0,0に
+        previous_position_.x = 0;
+        previous_position_.y = 0;
+        previous_position_.z = 0;
     }
 
 private:
@@ -106,9 +113,29 @@ private:
 
         // calc position,In Realsense D455, the depth is the distance from the camera to the object.
 
-        y_history_.push_back((mean_x - center_x) * depth_ / focal_length);
-        z_history_.push_back((mean_y - center_y) * depth_ / focal_length);
-        x_history_.push_back(depth_);
+        current_position_.x = depth_;
+        current_position_.y = (mean_x - center_x) * depth_ / focal_length;
+        current_position_.z = (mean_y - center_y) * depth_ / focal_length;
+
+        double distance = std::sqrt(
+            std::pow(current_position_.x - previous_position_.x, 2) +
+            std::pow(current_position_.y - previous_position_.y, 2) +
+            std::pow(current_position_.z - previous_position_.z, 2));
+
+        if (distance > distance_threshold_ && ignore_count_ < filter_rest_threshold_)
+        {
+            ignore_count_++;
+            return;
+        }
+        else
+        {
+            ignore_count_ = 0;
+            previous_position_ = current_position_;
+        }
+
+        x_history_.push_back(current_position_.x);
+        y_history_.push_back(current_position_.y);
+        z_history_.push_back(current_position_.z);
 
         if (x_history_.size() > window_size_)
         {
@@ -142,6 +169,12 @@ private:
 
     geometry_msgs::msg::Point position_;
 
+    const double distance_threshold_ = 0.15;
+    const uint filter_rest_threshold_ = 2;
+    uint ignore_count_;
+    geometry_msgs::msg::Point current_position_;
+    geometry_msgs::msg::Point previous_position_;
+
     float focal_length;
     float center_x;
     float center_y;
@@ -152,7 +185,7 @@ private:
     std::deque<float> y_history_;
     std::deque<float> z_history_;
 
-    long unsigned int window_size_ = 30;
+    long unsigned int window_size_ = 20;
 };
 
 int main(int argc, char *argv[])
