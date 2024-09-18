@@ -115,7 +115,7 @@ private:
 
         current_position_.x = depth_;
         current_position_.y = -(mean_x - center_x) * depth_ / focal_length;
-        current_position_.z = (mean_y - center_y) * depth_ / focal_length;
+        current_position_.z = -(mean_y - center_y) * depth_ / focal_length;
 
         double distance = std::sqrt(
             std::pow(current_position_.x - previous_position_.x, 2) +

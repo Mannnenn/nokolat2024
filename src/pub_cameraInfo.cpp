@@ -9,22 +9,22 @@ public:
     CameraInfoSubscriber() : Node("camera_info_subscriber")
     {
         // パラメータの宣言
-        this->declare_parameter<std::string>("camera_view_area_topic_name", "/camera/camera/infra1/camera_view_area");
-        this->declare_parameter<std::string>("camera_info_topic_name", "/camera/camera/infra1/camera_info");
+        this->declare_parameter<std::string>("input_camera_info_topic_name", "/camera/camera/infra1/camera_info");
+        this->declare_parameter<std::string>("output_camera_view_area_topic_name", "/camera/camera/infra1/camera_view_area");
 
         // パラメータからトピック名を取得
-        std::string camera_view_area_topic_name;
-        this->get_parameter("camera_view_area_topic_name", camera_view_area_topic_name);
-        std::string camera_info_topic_name;
-        this->get_parameter("camera_info_topic_name", camera_info_topic_name);
+        std::string input_camera_info_topic_name;
+        this->get_parameter("input_camera_info_topic_name", input_camera_info_topic_name);
+        std::string output_camera_view_area_topic_name;
+        this->get_parameter("output_camera_view_area_topic_name", output_camera_view_area_topic_name);
 
-        pub1_ = this->create_publisher<geometry_msgs::msg::PolygonStamped>(camera_view_area_topic_name + "camera_fov_triangle1", 10);
-        pub2_ = this->create_publisher<geometry_msgs::msg::PolygonStamped>(camera_view_area_topic_name + "camera_fov_triangle2", 10);
-        pub3_ = this->create_publisher<geometry_msgs::msg::PolygonStamped>(camera_view_area_topic_name + "camera_fov_triangle3", 10);
-        pub4_ = this->create_publisher<geometry_msgs::msg::PolygonStamped>(camera_view_area_topic_name + "camera_fov_triangle4", 10);
+        pub1_ = this->create_publisher<geometry_msgs::msg::PolygonStamped>(output_camera_view_area_topic_name + "fov1", 10);
+        pub2_ = this->create_publisher<geometry_msgs::msg::PolygonStamped>(output_camera_view_area_topic_name + "fov2", 10);
+        pub3_ = this->create_publisher<geometry_msgs::msg::PolygonStamped>(output_camera_view_area_topic_name + "fov3", 10);
+        pub4_ = this->create_publisher<geometry_msgs::msg::PolygonStamped>(output_camera_view_area_topic_name + "fov4", 10);
 
         sub_ = this->create_subscription<sensor_msgs::msg::CameraInfo>(
-            camera_info_topic_name, 10, std::bind(&CameraInfoSubscriber::cameraInfoCallback, this, std::placeholders::_1));
+            input_camera_info_topic_name, 10, std::bind(&CameraInfoSubscriber::cameraInfoCallback, this, std::placeholders::_1));
     }
 
 private:
@@ -42,7 +42,7 @@ private:
         double vertical_fov = 2 * atan(height / (2 * fy));
 
         // 四角錐の頂点を計算
-        double depth = 1.0; // 視野の深さを1メートルと仮定
+        double depth = 30.0; // 視野の深さを1メートルと仮定
         double half_width = depth * tan(horizontal_fov / 2);
         double half_height = depth * tan(vertical_fov / 2);
 
@@ -50,18 +50,22 @@ private:
         p0.x = 0;
         p0.y = 0;
         p0.z = 0; // カメラの位置
-        p1.z = depth;
+
         p1.x = -half_width;
         p1.y = -half_height;
-        p2.z = depth;
+        p1.z = depth;
+
         p2.x = half_width;
         p2.y = -half_height;
-        p3.z = depth;
+        p2.z = depth;
+
         p3.x = half_width;
         p3.y = half_height;
-        p4.z = depth;
+        p3.z = depth;
+
         p4.x = -half_width;
         p4.y = half_height;
+        p4.z = depth;
 
         // 三角形1: p0, p1, p2
         geometry_msgs::msg::PolygonStamped triangle1;

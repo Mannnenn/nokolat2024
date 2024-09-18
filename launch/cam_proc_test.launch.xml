@@ -1,17 +1,19 @@
 <launch>
-
     <!-- 左カメラからのトピック名 -->
     <arg name="left_image_rect_raw" default="/infra_cam/left/infra1/image_rect_raw" />
     <arg name="left_image_diff" default="/infra_cam/left/image_diff" />
     <arg name="left_image_diff_bivaluation" default="/infra_cam/left/image_diff_bivaluation" />
     <arg name="left_cog" default="/infra_cam/left_cog" />
+    <arg name="left_camera_info" default="/infra_cam/left/infra1/camera_info" />
+    <arg name="left_camera_view_area" default="/infra_cam/left/infra1/camera_view_area" />
 
     <!-- 右カメラからのトピック名 -->
     <arg name="right_image_rect_raw" default="/infra_cam/right/infra2/image_rect_raw" />
     <arg name="right_image_diff" default="/infra_cam/right/image_diff" />
     <arg name="right_image_diff_bivaluation" default="/infra_cam/right/image_diff_bivaluation" />
     <arg name="right_cog" default="/infra_cam/right_cog" />
-
+    <arg name="right_camera_info" default="/infra_cam/right/infra2/camera_info" />
+    <arg name="right_camera_view_area" default="/infra_cam/right/infra2/camera_view_area" />
 
     <!-- カメラからの情報を処理して得たトピック名 -->
     <arg name="depth" default="/infra_cam/depth" />
@@ -64,6 +66,12 @@
                 <param name="input_ir_image_topic_name" value="$(var left_image_rect_raw)" />
                 <param name="output_image_topic_name" value="$(var left_image_diff)" />
             </node>
+
+            <node pkg="nokolat2024" exec="pub_cameraInfo" name="pub_cameraInfo" output="screen">
+                <param name="input_camera_info_topic_name" value="$(var left_camera_info)" />
+                <param name="output_camera_view_area_topic_name"
+                    value="$(var left_camera_view_area)" />
+            </node>
         </group>
 
         <group>
@@ -72,6 +80,12 @@
                 output="screen">
                 <param name="input_ir_image_topic_name" value="$(var right_image_rect_raw)" />
                 <param name="output_image_topic_name" value="$(var right_image_diff)" />
+            </node>
+
+            <node pkg="nokolat2024" exec="pub_cameraInfo" name="pub_cameraInfo" output="screen">
+                <param name="input_camera_info_topic_name" value="$(var right_camera_info)" />
+                <param name="output_camera_view_area_topic_name"
+                    value="$(var right_camera_view_area)" />
             </node>
         </group>
 
@@ -102,6 +116,7 @@
 
         <node pkg="nokolat2024" exec="point2pointStamped" name="point2pointStamped" output="screen">
             <param name="input_position_topic_name" value="$(var position)" />
+            <param name="input_polygon_topic_name" value="$(var left_camera_view_area)" />
             <param name="output_position_stamped_topic_name" value="$(var position_stamped)" />
         </node>
 
@@ -190,7 +205,7 @@
         </node>
 
         <node pkg="tf2_ros" exec="static_transform_publisher" name="map_to_camera"
-            output="screen" args="0 0 1 0 0.2164396 0 0.976296 map camera_link" />
+            output="screen" args="0 0 1 0 0.2164396 0 -0.976296 map camera_link" />
 
         <node pkg="tf2_ros" exec="static_transform_publisher" name="base_link_to_imu_link"
             output="screen" args="0.065 0 0 0 0 0 1 base_link imu_link" />
