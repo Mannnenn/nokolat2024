@@ -4,7 +4,7 @@
 #include "geometry_msgs/msg/twist.hpp"
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
-#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 
 class PathFollower : public rclcpp::Node
 {
@@ -118,12 +118,15 @@ private:
         double roll, pitch, yaw;
         m.getRPY(roll, pitch, yaw);
 
-        double angle_diff = angle_to_target - yaw;
+        double yaw_diff = angle_to_target - yaw;
         double pitch_diff = pitch_to_target - pitch;
 
         cmd_vel.linear.x = 0.5 * distance;
-        cmd_vel.angular.z = 2.0 * angle_diff;
-        cmd_vel.angular.y = 2.0 * pitch_diff; // ピッチ角のコマンドを追加
+        cmd_vel.linear.y = 0.0;
+        cmd_vel.linear.z = current_pose.position.z;
+        cmd_vel.angular.x = 0.0;
+        cmd_vel.angular.y = pitch_diff;
+        cmd_vel.angular.z = yaw_diff;
 
         cmd_vel_publisher_->publish(cmd_vel);
     }

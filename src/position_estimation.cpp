@@ -114,7 +114,7 @@ private:
         // calc position,In Realsense D455, the depth is the distance from the camera to the object.
 
         current_position_.x = depth_;
-        current_position_.y = (mean_x - center_x) * depth_ / focal_length;
+        current_position_.y = -(mean_x - center_x) * depth_ / focal_length;
         current_position_.z = (mean_y - center_y) * depth_ / focal_length;
 
         double distance = std::sqrt(
@@ -166,7 +166,7 @@ private:
     geometry_msgs::msg::Point position_;
 
     const double distance_threshold_ = 0.15;
-    const uint filter_rest_threshold_ = 2;
+    const uint filter_rest_threshold_ = 5;
     uint ignore_count_;
     geometry_msgs::msg::Point current_position_;
     geometry_msgs::msg::Point previous_position_;

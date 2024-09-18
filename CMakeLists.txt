@@ -110,6 +110,10 @@ add_executable(path_generator src/path_generator.cpp)
 ament_target_dependencies(path_generator rclcpp geometry_msgs tf2_ros)
 target_link_libraries(path_generator Eigen3::Eigen)
 
+
+add_executable(path_followers src/path_followers.cpp)
+ament_target_dependencies(path_followers rclcpp geometry_msgs tf2 tf2_ros tf2_geometry_msgs)
+
 add_executable(rotation_counter src/rotation_counter.cpp)
 ament_target_dependencies(rotation_counter rclcpp std_msgs nokolat2024_msg)
 
@@ -121,6 +125,9 @@ ament_target_dependencies(pub_vel rclcpp geometry_msgs tf2 tf2_ros tf2_geometry_
 
 add_executable(pub_vel_link src/pub_vel_link.cpp)
 ament_target_dependencies(pub_vel_link rclcpp geometry_msgs tf2 tf2_ros tf2_geometry_msgs)
+
+add_executable(pub_cameraInfo src/pub_cameraInfo.cpp)
+ament_target_dependencies(pub_cameraInfo rclcpp sensor_msgs geometry_msgs)
 
 install(TARGETS
   tf_publisher
@@ -141,8 +148,10 @@ install(TARGETS
   get_neutral_position
   send_command
   path_generator
+  path_followers
   rotation_counter
   pub_ui_command
+  pub_cameraInfo
   DESTINATION lib/${PROJECT_NAME})
 
 
