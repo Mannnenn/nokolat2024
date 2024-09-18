@@ -33,10 +33,10 @@ control_info_config:
         p: 650
       pitch:
         p: 0.23
-      nose_up_pitch: 1.2
+      nose_up_pitch: 1
     target:
-      roll: -0.35
-      rudder: -200
+      roll: 0.32
+      rudder: 200
       pitch: -0.2
     delay:
       rudder: 0.5
@@ -48,21 +48,22 @@ control_info_config:
       aileron:
         p: 650
       pitch:
-        p: 0.25
-      nose_up_pitch: 1.2
+        p: 0.23
+      nose_up_pitch: 1.1
     target:
       roll: -0.35
       rudder: -200
       pitch: -0.2
-      upper_altitude: 2.0
+      upper_altitude: 4.0
       rise:
-        throttle: 100
-        roll: -0.40
+        throttle: 150
+        roll: -0.38
         pitch: -0.3
-        rudder: -50
+        rudder: -80
     delay:
       rudder: 0.5
-      throttle: 7
+      throttle: 3
+      decel: 4
 
   eight_turning:
     gain:
