@@ -110,7 +110,10 @@
             <param name="input_left_cog_topic_name" value="$(var left_cog)" />
             <param name="input_right_cog_topic_name" value="$(var right_cog)" />
             <param name="input_depth_topic_name" value="$(var depth)" />
-            <param name="output_position_topic_name" value="$(var position)" />
+            <!-- 
+                <param name="output_position_topic_name" value="$(var position)" />
+            -->
+            <param name="output_position_topic_name" value="aaaaaaaaaaa" />
             <param name="yaml_right_file" value="$(var camera_param_right)" />
         </node>
 
