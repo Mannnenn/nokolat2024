@@ -12,8 +12,8 @@ public:
             std::chrono::milliseconds(5),
             std::bind(&CubePublisher::publish_point, this));
         // 立方体の内部をまんべんなく埋める座標を設定
-        double step = 2;    // ステップサイズ
-        double size = 20.0; // 立方体の一辺の長さ
+        double step = 1;    // ステップサイズ
+        double size = 10.0; // 立方体の一辺の長さ
         for (double x = -size; x <= size; x += step)
         {
             for (double y = -size; y <= size; y += step)

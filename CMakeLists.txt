@@ -129,8 +129,6 @@ ament_target_dependencies(pub_vel_link rclcpp geometry_msgs tf2 tf2_ros tf2_geom
 add_executable(pub_cameraInfo src/pub_cameraInfo.cpp)
 ament_target_dependencies(pub_cameraInfo rclcpp sensor_msgs geometry_msgs)
 
-add_executable(test_position_pub src/test_position_pub.cpp)
-ament_target_dependencies(test_position_pub rclcpp geometry_msgs)
 
 install(TARGETS
   tf_publisher
@@ -155,7 +153,6 @@ install(TARGETS
   rotation_counter
   pub_ui_command
   pub_cameraInfo
-  test_position_pub
   DESTINATION lib/${PROJECT_NAME})
 
 
