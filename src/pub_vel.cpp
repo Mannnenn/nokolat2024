@@ -5,8 +5,8 @@
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/point_stamped.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
 
@@ -14,8 +14,11 @@ class VelocityCalculator : public rclcpp::Node
 {
 public:
     VelocityCalculator()
-        : Node("velocity_calculator"), tf_buffer_(this->get_clock()), tf_listener_(tf_buffer_)
+        : Node("velocity_calculator")
     {
+        tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
+        tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+
         this->declare_parameter<std::string>("input_position_stamped_topic_name", "/point_stamped");
         this->declare_parameter<std::string>("output_twist_topic_name", "/twist");
 
@@ -35,9 +38,19 @@ public:
 private:
     void pointCallback(const geometry_msgs::msg::PointStamped::SharedPtr msg)
     {
+        geometry_msgs::msg::PointStamped transformed_point;
+        try
+        {
+            tf_buffer_->transform(*msg, transformed_point, "map", tf2::durationFromSec(1.0));
+        }
+        catch (tf2::TransformException &ex)
+        {
+            RCLCPP_WARN(this->get_logger(), "Could not transform point: %s", ex.what());
+        }
+
         if (!last_point_)
         {
-            last_point_ = msg;
+            last_point_ = std::make_shared<geometry_msgs::msg::PointStamped>(transformed_point);
             return;
         }
 
@@ -51,7 +64,7 @@ private:
             return;
         }
 
-        point_buffer_.push_back(msg);
+        point_buffer_.push_back(std::make_shared<geometry_msgs::msg::PointStamped>(transformed_point));
 
         geometry_msgs::msg::Point delta;
 
@@ -74,7 +87,7 @@ private:
             if (velocity_norm > max_velocity_norm)
             {
                 // RCLCPP_WARN(this->get_logger(), "Velocity norm too large: %f", velocity_norm);
-                last_point_ = msg;
+                last_point_ = std::make_shared<geometry_msgs::msg::PointStamped>(transformed_point);
                 last_time = this->now();
                 return;
             }
@@ -88,7 +101,7 @@ private:
 
             publisher_->publish(velocity_msg);
 
-            last_point_ = msg;
+            last_point_ = std::make_shared<geometry_msgs::msg::PointStamped>(transformed_point);
             last_time = this->now();
         }
     }
@@ -96,8 +109,8 @@ private:
     rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr subscription_;
     rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr publisher_;
     geometry_msgs::msg::PointStamped::SharedPtr last_point_;
-    tf2_ros::Buffer tf_buffer_;
-    tf2_ros::TransformListener tf_listener_;
+    std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+    std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
     std::deque<geometry_msgs::msg::PointStamped::SharedPtr> point_buffer_;
 
