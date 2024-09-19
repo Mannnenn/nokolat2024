@@ -17,7 +17,13 @@ class PathGenerator : public rclcpp::Node
 public:
     PathGenerator() : Node("path_generator"), tf_buffer_(this->get_clock()), tf_listener_(tf_buffer_)
     {
-        publisher_ = this->create_publisher<geometry_msgs::msg::PoseArray>("path", 10);
+        this->declare_parameter<std::string>("output_path_topic_name", "/path");
+
+        // パラメータの取得
+        std::string output_path_topic_name;
+        this->get_parameter("output_path_topic_name", output_path_topic_name);
+
+        publisher_ = this->create_publisher<geometry_msgs::msg::PoseArray>(output_path_topic_name, 10);
         timer_ = this->create_wall_timer(
             std::chrono::seconds(1),
             std::bind(&PathGenerator::on_timer, this));

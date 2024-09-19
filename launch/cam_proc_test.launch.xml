@@ -42,6 +42,12 @@
     <arg name="rpy_angular_speed" default="/onboard/rpy_angular_speed" />
     <arg name="send_command_explicit" default="/onboard/command_explicit" />
 
+    <!-- 自動離着陸用のトピック -->
+    <arg name="path" default="/landing/path" />
+    <arg name="drop_timing" default="/landing/drop_timing" />
+    <arg name="target_vel" default="/landing/target_vel" />
+    <arg name="target_pose" default="/landing/target_pose" />
+
 
     <!-- カメラのパラメータファイルのパス -->
     <arg name="camera_param_left"
@@ -220,8 +226,40 @@
 
     </group>
 
+    <group>
+        <push_ros_namespace namespace="landing" />
+        <!-- Start the path_test node -->
+
+
+        <node pkg="nokolat2024" exec="path_generator" name="path_generator" output="screen">
+            <param name="output_path_topic_name" value="(var path)" />
+        </node>
+        <node pkg="nokolat2024" exec="path_followers" name="path_followers" output="screen">
+            <param name="input_path_topic_name" value="$(var path)" />
+            <param name="input_mode_topic_name" value="$(var mode)" />
+            <param name="output_cmd_vel_topic_name" value="$(var target_vel)" />
+            <param name="output_target_pose_topic_name" value="$(var target_pose)" />
+        </node>
+        <node pkg="nokolat2024" exec="pub_drop_timing" name="pub_drop_timing" output="screen">
+            <param name="output_drop_timing_topic_name" value="$(var mode)" />
+        </node>
+
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="map_to_start"
+            output="screen" args="0.5 0 0 0 0 0.7071068 0.7071068 map start" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="start_to_waypoint_1"
+            output="screen" args="4 2 1 0 0 0.2164396 0.976296 start waypoint_1" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_1_to_waypoint_2"
+            output="screen" args="6 4 2 0 0 0.3826834 0.9238795 start waypoint_2" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_2_to_waypoint_3"
+            output="screen" args="8 6 1 0 0 0.2164396 0.976296 start waypoint_3" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="start_to_goal"
+            output="screen" args="10 8 0 0 0 0 1 start goal" />
+
+    </group>
+
     <node pkg="rviz2" exec="rviz2" name="rviz"
         args="-d $(find-pkg-share nokolat2024)/rviz/rvizmodel.rviz" output="screen" />
+
 
     <node pkg="nokolat2024" name="timer" exec="timer" output="screen" />
 

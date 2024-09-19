@@ -97,7 +97,7 @@ add_executable(imu_tof2posAndQuat src/imu_tof2posAndQuat.cpp)
 ament_target_dependencies(imu_tof2posAndQuat rclcpp  geometry_msgs tf2_ros)
 
 add_executable(main_control src/main_control.cpp)
-ament_target_dependencies(main_control rclcpp  std_msgs geometry_msgs tf2_ros nokolat2024_msg)
+ament_target_dependencies(main_control rclcpp  std_msgs geometry_msgs tf2_ros nokolat2024_msg tf2_geometry_msgs)
 target_link_libraries(main_control yaml-cpp)
 
 add_executable(get_neutral_position src/get_neutral_position.cpp)
@@ -112,13 +112,13 @@ target_link_libraries(path_generator Eigen3::Eigen)
 
 
 add_executable(path_followers src/path_followers.cpp)
-ament_target_dependencies(path_followers rclcpp geometry_msgs tf2 tf2_ros tf2_geometry_msgs)
+ament_target_dependencies(path_followers rclcpp geometry_msgs tf2 tf2_ros tf2_geometry_msgs nokolat2024_msg)
 
 add_executable(rotation_counter src/rotation_counter.cpp)
 ament_target_dependencies(rotation_counter rclcpp std_msgs nokolat2024_msg)
 
 add_executable(pub_ui_command src/pub_ui_command.cpp)
-ament_target_dependencies(pub_ui_command rclcpp std_msgs geometry_msgs tf2_ros nokolat2024_msg)
+ament_target_dependencies(pub_ui_command rclcpp std_msgs geometry_msgs tf2_ros nokolat2024_msg tf2_geometry_msgs)
 
 add_executable(pub_vel src/pub_vel.cpp)
 ament_target_dependencies(pub_vel rclcpp geometry_msgs tf2 tf2_ros tf2_geometry_msgs)
@@ -132,6 +132,11 @@ ament_target_dependencies(pub_cameraInfo rclcpp sensor_msgs geometry_msgs)
 add_executable(timer src/timer.cpp)
 ament_target_dependencies(timer rclcpp std_msgs)
 
+add_executable(path_test src/path_test.cpp)
+ament_target_dependencies(path_test rclcpp tf2 tf2_ros geometry_msgs sensor_msgs)
+
+add_executable(pub_drop_timing src/pub_drop_timing.cpp)
+ament_target_dependencies(pub_drop_timing rclcpp tf2 tf2_ros std_msgs geometry_msgs)
 
 install(TARGETS
   tf_publisher
@@ -157,6 +162,8 @@ install(TARGETS
   pub_ui_command
   pub_cameraInfo
   timer
+  path_test
+  pub_drop_timing
   DESTINATION lib/${PROJECT_NAME})
 
 

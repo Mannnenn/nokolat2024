@@ -1,14 +1,255 @@
 <launch>
+    <!-- 左カメラからのトピック名 -->
+    <arg name="left_image_rect_raw" default="/infra_cam/left/infra1/image_rect_raw" />
+    <arg name="left_image_diff" default="/infra_cam/left/image_diff" />
+    <arg name="left_image_diff_bivaluation" default="/infra_cam/left/image_diff_bivaluation" />
+    <arg name="left_cog" default="/infra_cam/left_cog" />
+    <arg name="left_camera_info" default="/infra_cam/left/infra1/camera_info" />
+    <arg name="left_camera_view_area" default="/infra_cam/left/infra1/camera_view_area" />
 
-    <!-- Start the path_test node -->
-    <node pkg="tf2_ros" exec="static_transform_publisher" name="map_to_start"
-        output="screen" args="3 2 1 0 0 0 1.0 map start" />
-    <node pkg="tf2_ros" exec="static_transform_publisher" name="start_to_waypoint_1"
-        output="screen" args="3 2 1 0 0 0.258819 0.9659258 start waypoint_1" />
-    <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_2_to_waypoint_1"
-        output="screen" args="2 1 2 0 0 0 1.0 waypoint_1 waypoint_2" />
-    <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_3_to_waypoint_2"
-        output="screen" args="2 2 0 0 0 -0.258819 0.9659258 waypoint_2 waypoint_3" />
-    <node pkg="tf2_ros" exec="static_transform_publisher" name="start_to_goal"
-        output="screen" args="10 7 0 0 0 0 1.0 start goal" />
+    <!-- 右カメラからのトピック名 -->
+    <arg name="right_image_rect_raw" default="/infra_cam/right/infra2/image_rect_raw" />
+    <arg name="right_image_diff" default="/infra_cam/right/image_diff" />
+    <arg name="right_image_diff_bivaluation" default="/infra_cam/right/image_diff_bivaluation" />
+    <arg name="right_cog" default="/infra_cam/right_cog" />
+    <arg name="right_camera_info" default="/infra_cam/right/infra2/camera_info" />
+    <arg name="right_camera_view_area" default="/infra_cam/right/infra2/camera_view_area" />
+
+    <!-- カメラからの情報を処理して得たトピック名 -->
+    <arg name="depth" default="/infra_cam/depth" />
+    <arg name="position" default="/infra_cam/position" />
+    <arg name="position_stamped" default="/infra_cam/position_stamped" />
+    <arg name="velocity" default="/infra_cam/velocity" />
+
+    <!-- マイコンからの情報のトピック名 -->
+    <arg name="imu_tof" default="/imu_tof" />
+    <arg name="recieve_command" default="/controller" />
+
+    <!-- マイコンへの情報のトピック名 -->
+    <arg name="send_command" default="/command" />
+
+    <!-- マイコンからの情報を処理して得たトピック名 -->
+    <arg name="altitude" default="/onboard/altitude" />
+    <arg name="quat" default="/onboard/quat" />
+    <arg name="propo_explicit" default="/onboard/propo_explicit" />
+    <arg name="mode" default="/onboard/mode" />
+    <arg name="neutral_position" default="/onboard/neutral_position" />
+    <arg name="counter_reset" default="/onboard/rotation_counter_reset" />
+    <arg name="rotation_counter" default="/onboard/rotation_counter" />
+
+    <!-- 機体角の制御用のトピック名 -->
+    <arg name="rpy_angular" default="/onboard/rpy_angular" />
+    <arg name="rpy_angular_speed" default="/onboard/rpy_angular_speed" />
+    <arg name="send_command_explicit" default="/onboard/command_explicit" />
+
+
+    <!-- カメラのパラメータファイルのパス -->
+    <arg name="camera_param_left"
+        default="$(find-pkg-share nokolat2024)/param/camera_param_left.yaml" />
+    <arg name="camera_param_right"
+        default="$(find-pkg-share nokolat2024)/param/camera_param_right.yaml" />
+
+    <!-- コントローラーのパラメーターファイルのパス-->
+    <arg name="control_param"
+        default="$(find-pkg-share nokolat2024)/param/control_param.yaml" />
+
+
+    <!-- カメラ関係-->
+    <group>
+
+        <push_ros_namespace namespace="infra_cam" />
+
+        <group>
+            <push-ros-namespace namespace="left" />
+            <node pkg="nokolat2024" exec="image_diff_extraction" name="image_diff_extraction"
+                output="screen">
+                <param name="input_ir_image_topic_name" value="$(var left_image_rect_raw)" />
+                <param name="output_image_topic_name" value="$(var left_image_diff)" />
+            </node>
+
+            <node pkg="nokolat2024" exec="pub_cameraInfo" name="pub_cameraInfo" output="screen">
+                <param name="input_camera_info_topic_name" value="$(var left_camera_info)" />
+                <param name="output_camera_view_area_topic_name"
+                    value="$(var left_camera_view_area)" />
+            </node>
+        </group>
+
+        <group>
+            <push-ros-namespace namespace="right" />
+            <node pkg="nokolat2024" exec="image_diff_extraction" name="image_diff_extraction"
+                output="screen">
+                <param name="input_ir_image_topic_name" value="$(var right_image_rect_raw)" />
+                <param name="output_image_topic_name" value="$(var right_image_diff)" />
+            </node>
+
+            <node pkg="nokolat2024" exec="pub_cameraInfo" name="pub_cameraInfo" output="screen">
+                <param name="input_camera_info_topic_name" value="$(var right_camera_info)" />
+                <param name="output_camera_view_area_topic_name"
+                    value="$(var right_camera_view_area)" />
+            </node>
+        </group>
+
+        <node pkg="nokolat2024" exec="cog_corrected" name="cog_corrected" output="screen">
+            <param name="input_left_image_topic_name" value="$(var left_image_diff)" />
+            <param name="input_right_image_topic_name" value="$(var right_image_diff)" />
+            <param name="output_left_cog_topic_name" value="$(var left_cog)" />
+            <param name="output_right_cog_topic_name" value="$(var right_cog)" />
+            <param name="yaml_left_file" value="$(var camera_param_left)" />
+            <param name="yaml_right_file" value="$(var camera_param_right)" />
+        </node>
+
+        <node pkg="nokolat2024" exec="depth_estimation" name="depth_estimation" output="screen">
+            <param name="input_left_cog_topic_name" value="$(var left_cog)" />
+            <param name="input_right_cog_topic_name" value="$(var right_cog)" />
+            <param name="output_depth_topic_name" value="$(var depth)" />
+            <param name="yaml_right_file" value="$(var camera_param_right)" />
+        </node>
+
+        <node pkg="nokolat2024" exec="position_estimation" name="position_estimation"
+            output="screen">
+            <param name="input_left_cog_topic_name" value="$(var left_cog)" />
+            <param name="input_right_cog_topic_name" value="$(var right_cog)" />
+            <param name="input_depth_topic_name" value="$(var depth)" />
+            <param name="output_position_topic_name" value="$(var position)" />
+            <param name="output_position_topic_name" value="$(var position)" />
+            <param name="yaml_right_file" value="$(var camera_param_right)" />
+        </node>
+
+        <node pkg="nokolat2024" exec="point2pointStamped" name="point2pointStamped" output="screen">
+            <param name="input_position_topic_name" value="$(var position)" />
+            <param name="output_position_stamped_topic_name" value="$(var position_stamped)" />
+        </node>
+
+        <node pkg="nokolat2024" exec="pub_vel_link" name="pub_vel_link"
+            output="screen">
+            <param name="input_position_topic_name" value="$(var position_stamped)" />
+            <param name="input_altitude_stamped_topic_name" value="$(var altitude)" />
+        </node>
+
+        <node pkg="nokolat2024" exec="pub_vel" name="pub_vel"
+            output="screen">
+            <param name="input_position_stamped_topic_name" value="$(var position_stamped)" />
+            <param name="output_twist_topic_name" value="$(var velocity)" />
+        </node>
+
+    </group>
+
+    <!-- マイコン関係 -->
+    <group>
+
+        <push_ros_namespace namespace="onboard" />
+
+        <node pkg="nokolat2024" exec="imu_tof2posAndQuat" name="imu_tof2posAndQuat" output="screen">
+            <param name="input_imu_tof_topic_name" value="$(var imu_tof)" />
+            <param name="output_altitude_stamped_topic_name" value="$(var altitude)" />
+            <param name="output_quaternion_topic_name" value="$(var quat)" />
+        </node>
+
+        <node pkg="nokolat2024" exec="tf_publisher" name="tf_publisher" output="screen">
+            <param name="input_position_topic_name" value="$(var position_stamped)" />
+            <param name="input_altitude_stamped_topic_name" value="$(var altitude)" />
+            <param name="input_quaternion_topic_name" value="$(var quat)" />
+        </node>
+
+        <node pkg="nokolat2024" exec="projection_xy" name="projection_xy" output="screen" />
+
+        <node pkg="nokolat2024" exec="recive_command" name="recive_command" output="screen">
+            <param name="input_propo_topic_name" value="$(var recieve_command)" />
+            <param name="output_command_explicit_topic_name" value="$(var propo_explicit)" />
+            <param name="output_mode_topic_name" value="$(var mode)" />
+
+        </node>
+
+        <node pkg="nokolat2024" exec="get_neutral_position" name="get_neutral_position"
+            output="screen">
+            <param name="input_command_explicit_topic_name" value="$(var propo_explicit)" />
+            <param name="output_neutral_position_topic_name" value="$(var neutral_position)" />
+        </node>
+
+        <node pkg="nokolat2024" exec="tf2rpy" name="tf2rpy" output="screen">
+            <param name="output_angular_topic_name" value="$(var rpy_angular)" />
+            <param name="output_angular_velocity_topic_name" value="$(var rpy_angular_speed)" />
+        </node>
+
+        <node pkg="nokolat2024" exec="rotation_counter" name="rotation_counter" output="screen">
+            <param name="input_angular_topic_name" value="$(var rpy_angular)" />
+            <param name="input_angular_velocity_topic_name" value="$(var rpy_angular_speed)" />
+            <param name="input_counter_reset_topic_name" value="$(var counter_reset)" />
+            <param name="output_rotation_counter_topic_name" value="$(var rotation_counter)" />
+        </node>
+
+        <node pkg="nokolat2024" exec="main_control" name="main_control" output="screen">
+            <param name="yaml_control_config" value="$(var control_param)" />
+            <param name="input_neutral_position_topic_name" value="$(var neutral_position)" />
+            <param name="input_command_explicit_topic_name" value="$(var propo_explicit)" />
+            <param name="input_mode_topic_name" value="$(var mode)" />
+            <param name="input_angular_topic_name" value="$(var rpy_angular)" />
+            <param name="input_altitude_stamped_topic_name" value="$(var altitude)" />
+            <param name="input_neutral_position_topic_name" value="$(var neutral_position)" />
+            <param name="input_rotation_counter_topic_name" value="$(var rotation_counter)" />
+
+            <param name="output_command_topic_name" value="$(var send_command_explicit)" />
+            <param name="output_counter_reset_topic_name"
+                value="$(var counter_reset)" />
+        </node>
+
+        <node pkg="nokolat2024" exec="send_command" name="send_command" output="screen">
+            <param name="input_command_explicit_topic_name" value="$(var send_command_explicit)" />
+            <param name="output_command_topic_name" value="$(var send_command)" />
+        </node>
+
+        <node pkg="nokolat2024" exec="pub_ui_command" name="pub_ui_command">
+            <param name="input_command_topic_name" value="$(var propo_explicit)" />
+            <param name="input_command_explicit_topic_name" value="$(var send_command_explicit)" />
+            <param name="input_mode_topic_name" value="$(var mode)" />
+        </node>
+
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="map_to_camera"
+            output="screen" args="0 0 1 0 0.2164396 0 -0.976296 map camera_link" />
+
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="base_link_to_imu_link"
+            output="screen" args="0.065 0 0 0 0 0 1 base_link imu_link" />
+
+        <node pkg="tf2_ros" exec="static_transform_publisher"
+            name="camera_link_to_right_camera_link"
+            output="screen" args="0 0 0 0 0 0 1 camera_link right_link" />
+
+
+        <node pkg="micro_ros_agent" exec="micro_ros_agent" name="micro_ros_agent" output="screen"
+            args="udp4 --port 8888" />
+
+    </group>
+
+    <group>
+        <push ros_namespace="landing" />
+        <!-- Start the path_test node -->
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="map_to_start"
+            output="screen" args="0.5 0 0 0 0 0.7071068 0.7071068 map start" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="start_to_waypoint_1"
+            output="screen" args="4 2 1 0 0 0.2164396 0.976296 start waypoint_1" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_1_to_waypoint_2"
+            output="screen" args="6 4 2 0 0 0.3826834 0.9238795 start waypoint_2" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_2_to_waypoint_3"
+            output="screen" args="8 6 1 0 0 0.2164396 0.976296 start waypoint_3" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="start_to_goal"
+            output="screen" args="10 8 0 0 0 0 1 start goal" />
+
+        <node pkg="nokolat2024" exec="path_generator" name="path_generator" output="screen" />
+        <node pkg="nokolat2024" exec="path_followers" name="path_followers" output="screen">
+            <param name="input_mode_topic_name" value="$(var mode)" />
+        </node>
+        <node pkg="nokolat2024" exec="path_test" name="path_test" output="screen" />
+        <node pkg="nokolat2024" exec="pub_drop_timing" name="pub_drop_timing" output="screen" />
+
+        <node pkg="joy" exec="joy_node" name="joy_node" output="screen">
+            <param name="publish_rate" value="50.0" />
+        </node>
+    </group>
+
+    <node pkg="rviz2" exec="rviz2" name="rviz"
+        args="-d $(find-pkg-share nokolat2024)/rviz/rvizmodel.rviz" output="screen" />
+
+    <node pkg="nokolat2024" name="timer" exec="timer" output="screen" />
+
+
 </launch>
