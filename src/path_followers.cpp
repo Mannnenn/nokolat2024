@@ -30,7 +30,7 @@ public:
         target_pose_publisher_ = this->create_publisher<geometry_msgs::msg::PoseStamped>(output_target_pose_topic_name, 10);
 
         timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(100), std::bind(&PathFollower::update_target, this));
+            std::chrono::milliseconds(20), std::bind(&PathFollower::update_target, this));
     }
 
 private:
@@ -95,7 +95,7 @@ private:
             double dy = target_pose.position.y - current_pose.pose.position.y;
 
             double distance = std::sqrt(dx * dx + dy * dy);
-            double angle_to_target = std::atan2(dy, dx);
+            // double angle_to_target = std::atan2(dy, dx);
 
             tf2::Quaternion q(
                 transformStamped.transform.rotation.x,
@@ -108,10 +108,10 @@ private:
             double roll, pitch, yaw;
             m.getRPY(roll, pitch, yaw);
 
-            double angle_diff = std::fabs(angle_to_target - yaw);
+            // double angle_diff = std::fabs(angle_to_target - yaw);
 
             // 目標点が機体前方1m以内かつ角度差が30度以内、または目標点が機体の後方にある場合に次の目標点に切り替える
-            if ((distance < 1) || angle_diff > M_PI / 2)
+            if (distance < 1 || dx + 0.5 > 0)
             {
                 current_target_index_++;
             }
@@ -119,6 +119,7 @@ private:
             {
                 // RCLCPP_INFO(this->get_logger(), "Target Position: [%.2f, %.2f, %.2f]", target_pose.position.x, target_pose.position.y, target_pose.position.z);
                 // RCLCPP_INFO(this->get_logger(), "Target Orientation: [%.2f, %.2f, %.2f, %.2f]", target_pose.orientation.x, target_pose.orientation.y, target_pose.orientation.z, target_pose.orientation.w);
+                // RCLCPP_INFO(this->get_logger(), "Angle diff: %.2f", angle_diff);
                 follow_target(target_pose, current_pose.pose);
                 break;
             }

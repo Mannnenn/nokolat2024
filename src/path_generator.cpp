@@ -25,7 +25,7 @@ public:
 
         publisher_ = this->create_publisher<geometry_msgs::msg::PoseArray>(output_path_topic_name, 10);
         timer_ = this->create_wall_timer(
-            std::chrono::seconds(1),
+            std::chrono::seconds(10),
             std::bind(&PathGenerator::on_timer, this));
     }
 
@@ -34,57 +34,48 @@ private:
     {
         try
         {
-            auto transform_map_to_start = tf_buffer_.lookupTransform("map", "start", tf2::TimePointZero);
-            auto transform_start_to_waypoint1 = tf_buffer_.lookupTransform("map", "waypoint_1", tf2::TimePointZero);
-            auto transform_waypoint1_to_waypoint2 = tf_buffer_.lookupTransform("map", "waypoint_2", tf2::TimePointZero);
-            auto transform_waypoint2_to_waypoint3 = tf_buffer_.lookupTransform("map", "waypoint_3", tf2::TimePointZero);
-            auto transform_waypoint3_to_goal = tf_buffer_.lookupTransform("map", "goal", tf2::TimePointZero);
+            std::vector<geometry_msgs::msg::TransformStamped> transforms;
+            for (int i = 0;; ++i)
+            {
+                try
+                {
+                    std::string frame_id = "waypoint_" + std::to_string(i);
+                    auto transform = tf_buffer_.lookupTransform("map", frame_id, tf2::TimePointZero);
+                    transforms.push_back(transform);
+                }
+                catch (tf2::TransformException &ex)
+                {
+                    // Break the loop if no more waypoints are found
+                    break;
+                }
+            }
+
+            if (transforms.size() < 2)
+            {
+                RCLCPP_WARN(this->get_logger(), "Not enough waypoints found to generate a path.");
+                return;
+            }
 
             // Define control points and orientations
             // ROS2::xyzw, Eigen::Quaterniond::wxyz
-            std::vector<Eigen::Vector3d> control_points = {
-                {transform_map_to_start.transform.translation.x,
-                 transform_map_to_start.transform.translation.y,
-                 transform_map_to_start.transform.translation.z},
-                {transform_start_to_waypoint1.transform.translation.x,
-                 transform_start_to_waypoint1.transform.translation.y,
-                 transform_start_to_waypoint1.transform.translation.z},
-                {transform_waypoint1_to_waypoint2.transform.translation.x,
-                 transform_waypoint1_to_waypoint2.transform.translation.y,
-                 transform_waypoint1_to_waypoint2.transform.translation.z},
-                {transform_waypoint2_to_waypoint3.transform.translation.x,
-                 transform_waypoint2_to_waypoint3.transform.translation.y,
-                 transform_waypoint2_to_waypoint3.transform.translation.z},
-                {transform_waypoint3_to_goal.transform.translation.x,
-                 transform_waypoint3_to_goal.transform.translation.y,
-                 transform_waypoint3_to_goal.transform.translation.z}};
+            std::vector<Eigen::Vector3d> control_points;
+            for (const auto &transform : transforms)
+            {
+                control_points.emplace_back(
+                    transform.transform.translation.x,
+                    transform.transform.translation.y,
+                    transform.transform.translation.z);
+            }
 
-            std::vector<Eigen::Quaterniond> orientations = {
-                Eigen::Quaterniond(
-                    transform_map_to_start.transform.rotation.w,
-                    transform_map_to_start.transform.rotation.x,
-                    transform_map_to_start.transform.rotation.y,
-                    transform_map_to_start.transform.rotation.z),
-                Eigen::Quaterniond(
-                    transform_start_to_waypoint1.transform.rotation.w,
-                    transform_start_to_waypoint1.transform.rotation.x,
-                    transform_start_to_waypoint1.transform.rotation.y,
-                    transform_start_to_waypoint1.transform.rotation.z),
-                Eigen::Quaterniond(
-                    transform_waypoint1_to_waypoint2.transform.rotation.w,
-                    transform_waypoint1_to_waypoint2.transform.rotation.x,
-                    transform_waypoint1_to_waypoint2.transform.rotation.y,
-                    transform_waypoint1_to_waypoint2.transform.rotation.z),
-                Eigen::Quaterniond(
-                    transform_waypoint2_to_waypoint3.transform.rotation.w,
-                    transform_waypoint2_to_waypoint3.transform.rotation.x,
-                    transform_waypoint2_to_waypoint3.transform.rotation.y,
-                    transform_waypoint2_to_waypoint3.transform.rotation.z),
-                Eigen::Quaterniond(
-                    transform_waypoint3_to_goal.transform.rotation.w,
-                    transform_waypoint3_to_goal.transform.rotation.x,
-                    transform_waypoint3_to_goal.transform.rotation.y,
-                    transform_waypoint3_to_goal.transform.rotation.z)};
+            std::vector<Eigen::Quaterniond> orientations;
+            for (const auto &transform : transforms)
+            {
+                orientations.emplace_back(
+                    transform.transform.rotation.w,
+                    transform.transform.rotation.x,
+                    transform.transform.rotation.y,
+                    transform.transform.rotation.z);
+            }
 
             // Create the spline
             Eigen::MatrixXd points(3, control_points.size());
@@ -100,7 +91,7 @@ private:
             path_msg.header.stamp = this->now();
             path_msg.header.frame_id = "map";
 
-            for (double t = 0; t <= 1; t += 0.01)
+            for (double t = 0; t <= 1; t += 0.02)
             {
                 Eigen::Vector3d point = spline(t);
                 Eigen::Quaterniond orientation = interpolate_orientation(orientations, t);

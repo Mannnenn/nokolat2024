@@ -138,6 +138,9 @@ ament_target_dependencies(path_test rclcpp tf2 tf2_ros geometry_msgs sensor_msgs
 add_executable(pub_drop_timing src/pub_drop_timing.cpp)
 ament_target_dependencies(pub_drop_timing rclcpp tf2 tf2_ros std_msgs geometry_msgs)
 
+add_executable(pub_area src/pub_area.cpp)
+ament_target_dependencies(pub_area rclcpp geometry_msgs)
+
 install(TARGETS
   tf_publisher
   image_diff_extraction
@@ -164,6 +167,7 @@ install(TARGETS
   timer
   path_test
   pub_drop_timing
+  pub_area
   DESTINATION lib/${PROJECT_NAME})
 
 

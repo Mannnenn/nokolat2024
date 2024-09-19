@@ -232,7 +232,7 @@
 
 
         <node pkg="nokolat2024" exec="path_generator" name="path_generator" output="screen">
-            <param name="output_path_topic_name" value="(var path)" />
+            <param name="output_path_topic_name" value="$(var path)" />
         </node>
         <node pkg="nokolat2024" exec="path_followers" name="path_followers" output="screen">
             <param name="input_path_topic_name" value="$(var path)" />
@@ -241,20 +241,35 @@
             <param name="output_target_pose_topic_name" value="$(var target_pose)" />
         </node>
         <node pkg="nokolat2024" exec="pub_drop_timing" name="pub_drop_timing" output="screen">
-            <param name="output_drop_timing_topic_name" value="$(var mode)" />
+            <param name="output_drop_timing_topic_name" value="$(var drop_timing)" />
         </node>
 
-        <node pkg="tf2_ros" exec="static_transform_publisher" name="map_to_start"
-            output="screen" args="0.5 0 0 0 0 0.7071068 0.7071068 map start" />
-        <node pkg="tf2_ros" exec="static_transform_publisher" name="start_to_waypoint_1"
-            output="screen" args="4 2 1 0 0 0.2164396 0.976296 start waypoint_1" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="map_to_waypoint_0"
+            output="screen" args="37 -1.95 0 0 0 1 0 map waypoint_0" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_0_to_waypoint_1"
+            output="screen" args="4 0 0.5 0 0 0 1 waypoint_0 waypoint_1" />
         <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_1_to_waypoint_2"
-            output="screen" args="6 4 2 0 0 0.3826834 0.9238795 start waypoint_2" />
+            output="screen" args="13 0 2 0 0 0 1 waypoint_0 waypoint_2" />
         <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_2_to_waypoint_3"
-            output="screen" args="8 6 1 0 0 0.2164396 0.976296 start waypoint_3" />
-        <node pkg="tf2_ros" exec="static_transform_publisher" name="start_to_goal"
-            output="screen" args="10 8 0 0 0 0 1 start goal" />
+            output="screen" args="14 0 2 0 0 0 1 waypoint_0 waypoint_3" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_0_to_waypoint_4"
+            output="screen" args="17 -1 2 0 0 0 1 waypoint_0 waypoint_4" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_4_to_waypoint_5"
+            output="screen" args="20 -1.95 2 0 0 0 1 waypoint_0 waypoint_5" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_5_to_waypoint_6"
+            output="screen" args="21 -1.95 2 0 0 0 1 waypoint_0 waypoint_6" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_6_to_waypoint_7"
+            output="screen" args="27 -1.95 0.5 0 0 0 1 waypoint_0 waypoint_7" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_7_to_waypoint_8"
+            output="screen" args="32 -1.95 0 0 0 0 1 waypoint_0 waypoint_8" />
 
+    </group>
+
+    <group>
+        <push_ros_namespace namespace="area" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="map_to_origin"
+            output="screen" args="-1 14.5 0 0 0 0 1 map origin" />
+        <node pkg="nokolat2024" exec="pub_area" name="pub_area" output="screen" />
     </group>
 
     <node pkg="rviz2" exec="rviz2" name="rviz"

@@ -25,8 +25,8 @@ private:
     {
         if (msg->axes.size() >= 6)
         {
-            x_ += -0.01 * msg->axes[0];
-            y_ += 0.01 * msg->axes[1];
+            x_ += -0.03 * msg->axes[1];
+            y_ += -0.03 * msg->axes[0];
             yo_ += 0.1 * msg->axes[4];
         }
     }
