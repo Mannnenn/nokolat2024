@@ -17,9 +17,9 @@ control_info_config:
       max: 1680
       min: 368
     drop:
-      max: 1680
-      center: 1000
-      min: 368
+      max: 1984
+      center: 1238
+      min: 817
 
   convergence:
     roll: 0.1
@@ -63,7 +63,7 @@ control_info_config:
     delay:
       rudder: 0.5
       throttle: 3
-      decel: 4
+      decel: 2
 
   eight_turning:
     gain:
@@ -84,7 +84,7 @@ control_info_config:
       pitch:
         r: -0.2
         l: -0.2
-        recover: -0.1
+        recover: -0.15
     delay:
       rudder: 0.5
 

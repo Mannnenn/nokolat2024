@@ -223,5 +223,7 @@
     <node pkg="rviz2" exec="rviz2" name="rviz"
         args="-d $(find-pkg-share nokolat2024)/rviz/rvizmodel.rviz" output="screen" />
 
+    <node pkg="nokolat2024" name="timer" exec="timer" output="screen" />
+
 
 </launch>

@@ -195,7 +195,7 @@ public:
         }
 
         timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(50), // 早すぎると通信エラーが発生する
+            std::chrono::milliseconds(75), // 早すぎると通信エラーが発生する
             std::bind(&MainControlNode::timer_callback, this));
 
         ros_clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
@@ -508,11 +508,13 @@ private:
         {
             rclcpp::Duration diff = ros_clock->now() - start_mode_time_;
             throttle = throttle_control(rise_turning_target.throttle_target + rise_turning_target.rise_throttle_target * linearDecrease(diff.seconds(), rise_turning_delay.delay_decel));
-            elevator = elevator_control(rise_turning_target.higher_altitude_target, rise_turning_gain.pitch_gain, rise_turning_target.pitch_target, rise_turning_gain.nose_up_pitch_gain, rise_turning_gain.elevator_gain);
-            aileron_l = aileron_control_l(rise_turning_target.roll_target, rise_turning_gain.aileron_gain);
-            aileron_r = aileron_control_r(rise_turning_target.roll_target, rise_turning_gain.aileron_gain);
-            rudder = neutral_position_.rudder + rise_turning_target.rudder_target + rise_turning_target.rise_rudder_target * linearDecrease(diff.seconds(), rise_turning_delay.delay_decel);
+            elevator = elevator_control(rise_turning_target.higher_altitude_target, rise_turning_gain.pitch_gain, rise_turning_target.pitch_target + (rise_turning_target.rise_pitch_target - rise_turning_target.pitch_target) * linearIncrease(diff.seconds(), rise_turning_delay.delay_decel), rise_turning_gain.nose_up_pitch_gain, rise_turning_gain.elevator_gain);
+            aileron_l = aileron_control_l(rise_turning_target.rise_roll_target, rise_turning_gain.aileron_gain);
+            aileron_r = aileron_control_r(rise_turning_target.rise_roll_target, rise_turning_gain.aileron_gain);
+            rudder = neutral_position_.rudder + rise_turning_target.rudder_target + rise_turning_target.rise_rudder_target;
         }
+
+        drop = drop_control(config.drop_min);
     }
 
     void auto_eight_turning_control()
@@ -565,7 +567,7 @@ private:
 
             // 水平の基準状態に戻す
             throttle = throttle_control(eight_turning_target.throttle_target);
-            elevator = elevator_control(eight_turning_target.altitude_target, eight_turning_gain.pitch_gain, eight_turning_target.pitch_target_recover, eight_turning_gain.nose_up_pitch_gain, eight_turning_gain.elevator_gain);
+            elevator = elevator_control(eight_turning_target.altitude_target, eight_turning_gain.pitch_gain, eight_turning_target.pitch_target_recover + (eight_turning_target.pitch_target - eight_turning_target.pitch_target_recover) * linearDecrease(diff.seconds(), eight_turning_delay.delay_rudder), eight_turning_gain.nose_up_pitch_gain, eight_turning_gain.elevator_gain);
             aileron_l = aileron_control_l(0, eight_turning_gain.aileron_gain); // Roll = 0
             aileron_r = aileron_control_r(0, eight_turning_gain.aileron_gain);
             rudder = neutral_position_.rudder + eight_turning_target.rudder_target_l * linearDecrease(diff.seconds(), eight_turning_delay.delay_rudder);
@@ -586,7 +588,7 @@ private:
 
             // 水平の基準状態に戻す
             throttle = throttle_control(eight_turning_target.throttle_target);
-            elevator = elevator_control(eight_turning_target.altitude_target, eight_turning_gain.pitch_gain, eight_turning_target.pitch_target_recover, eight_turning_gain.nose_up_pitch_gain, eight_turning_gain.elevator_gain);
+            elevator = elevator_control(eight_turning_target.altitude_target, eight_turning_gain.pitch_gain, eight_turning_target.pitch_target_recover + (eight_turning_target.pitch_target - eight_turning_target.pitch_target_recover) * linearDecrease(diff.seconds(), eight_turning_delay.delay_rudder), eight_turning_gain.nose_up_pitch_gain, eight_turning_gain.elevator_gain);
             aileron_l = aileron_control_l(0, eight_turning_gain.aileron_gain); // Roll = 0
             aileron_r = aileron_control_r(0, eight_turning_gain.aileron_gain);
             rudder = neutral_position_.rudder + eight_turning_target.rudder_target_l * linearDecrease(diff.seconds(), eight_turning_delay.delay_rudder);
