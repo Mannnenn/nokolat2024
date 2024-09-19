@@ -76,7 +76,7 @@ control_info_config:
       nose_up_pitch: 1.2
     target:
       roll:
-        r: 0.32
+        r: 0.33
         l: -0.35
       rudder:
         r: 200
