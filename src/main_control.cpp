@@ -316,10 +316,6 @@ private:
             // それぞれのモードの初回呼び出し用。マニュアルに戻したら初期化
             mode_init = true;
 
-            // 自動離着陸用のタイミングもリセット
-            drop_timing = false;
-            throttle_off_timing = false;
-
             // 旋回カウンタもリセット
             reset_rotation_count(1);
         }
@@ -383,6 +379,10 @@ private:
             if (mode_init)
             {
                 RCLCPP_INFO(this->get_logger(), "MODE: AUTO_LANDING");
+
+                // 自動離着陸用のタイミングもリセット
+                drop_timing = false;
+                throttle_off_timing = false;
 
                 mode_init = false;
                 start_mode_time_ = ros_clock->now(); // 開始の時間を取得
