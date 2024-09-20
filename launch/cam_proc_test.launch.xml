@@ -20,18 +20,25 @@
 
     <!-- マイコンからの情報のトピック名 -->
     <arg name="imu_tof" default="/imu_tof" />
-    <arg name="input_propo_topic_name" default="/controller" />
+    <arg name="recieve_command" default="/controller" />
+
+    <!-- マイコンへの情報のトピック名 -->
+    <arg name="send_command" default="/command" />
 
     <!-- マイコンからの情報を処理して得たトピック名 -->
-    <arg name="altitude" default="altitude" />
-    <arg name="quat" default="quat" />
-    <arg name="propo" default="command" />
-    <arg name="propo_explicit" default="propo_explicit" />
-    <arg name="mode" default="mode" />
+    <arg name="altitude" default="/onboard/altitude" />
+    <arg name="quat" default="/onboard/quat" />
+    <arg name="propo_explicit" default="/onboard/propo_explicit" />
+    <arg name="mode" default="/onboard/mode" />
+    <arg name="neutral_position" default="/onboard/neutral_position" />
+    <arg name="counter_reset" default="/onboard/rotation_counter_reset" />
+    <arg name="rotation_counter" default="/onboard/rotation_counter" />
 
     <!-- 機体角の制御用のトピック名 -->
-    <arg name="rpy_angular" default="/rpy_angular" />
-    <arg name="rpy_angular_speed" default="/rpy_angular_speed" />
+    <arg name="rpy_angular" default="/onboard/rpy_angular" />
+    <arg name="rpy_angular_speed" default="/onboard/rpy_angular_speed" />
+    <arg name="send_command_explicit" default="/onboard/command_explicit" />
+
 
     <!-- カメラのパラメータファイルのパス -->
     <arg name="camera_param_left"
@@ -39,6 +46,12 @@
     <arg name="camera_param_right"
         default="$(find-pkg-share nokolat2024)/param/camera_param_right.yaml" />
 
+    <!-- コントローラーのパラメーターファイルのパス-->
+    <arg name="control_param"
+        default="$(find-pkg-share nokolat2024)/param/control_param.yaml" />
+
+
+    <!-- カメラ関係-->
     <group>
 
         <push_ros_namespace namespace="infra_cam" />
@@ -92,6 +105,7 @@
 
     </group>
 
+    <!-- マイコン関係 -->
     <group>
 
         <push_ros_namespace namespace="onboard" />
@@ -111,15 +125,48 @@
         <node pkg="nokolat2024" exec="projection_xy" name="projection_xy" output="screen" />
 
         <node pkg="nokolat2024" exec="recive_command" name="recive_command" output="screen">
-            <param name="input_propo_topic_name" value="$(var propo)" />
+            <param name="input_propo_topic_name" value="$(var recieve_command)" />
             <param name="output_command_explicit_topic_name" value="$(var propo_explicit)" />
             <param name="output_mode_topic_name" value="$(var mode)" />
 
         </node>
 
+        <node pkg="nokolat2024" exec="get_neutral_position" name="get_neutral_position"
+            output="screen">
+            <param name="input_command_explicit_topic_name" value="$(var propo_explicit)" />
+            <param name="output_neutral_position_topic_name" value="$(var neutral_position)" />
+        </node>
+
         <node pkg="nokolat2024" exec="tf2rpy" name="tf2rpy" output="screen">
             <param name="output_angular_topic_name" value="$(var rpy_angular)" />
             <param name="output_angular_velocity_topic_name" value="$(var rpy_angular_speed)" />
+        </node>
+
+        <node pkg="nokolat2024" exec="rotation_counter" name="rotation_counter" output="screen">
+            <param name="input_angular_topic_name" value="$(var rpy_angular)" />
+            <param name="input_angular_velocity_topic_name" value="$(var rpy_angular_speed)" />
+            <param name="input_counter_reset_topic_name" value="$(var counter_reset)" />
+            <param name="output_rotation_counter_topic_name" value="$(var rotation_counter)" />
+        </node>
+
+        <node pkg="nokolat2024" exec="main_control" name="main_control" output="screen">
+            <param name="yaml_control_config" value="$(var control_param)" />
+            <param name="input_neutral_position_topic_name" value="$(var neutral_position)" />
+            <param name="input_command_explicit_topic_name" value="$(var propo_explicit)" />
+            <param name="input_mode_topic_name" value="$(var mode)" />
+            <param name="input_angular_topic_name" value="$(var rpy_angular)" />
+            <param name="input_altitude_stamped_topic_name" value="$(var altitude)" />
+            <param name="input_neutral_position_topic_name" value="$(var neutral_position)" />
+            <param name="input_rotation_counter_topic_name" value="$(var rotation_counter)" />
+
+            <param name="output_command_topic_name" value="$(var send_command_explicit)" />
+            <param name="output_counter_reset_topic_name"
+                value="$(var counter_reset)" />
+        </node>
+
+        <node pkg="nokolat2024" exec="send_command" name="send_command" output="screen">
+            <param name="input_command_explicit_topic_name" value="$(var send_command_explicit)" />
+            <param name="output_command_topic_name" value="$(var send_command)" />
         </node>
 
         <node pkg="tf2_ros" exec="static_transform_publisher" name="map_to_camera"

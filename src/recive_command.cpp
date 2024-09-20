@@ -38,8 +38,8 @@ private:
     {
         nokolat2024_msg::msg::Command command_receive_msg;
         command_receive_msg.throttle = msg->position.x;
-        command_receive_msg.elevator = msg->position.y;
-        command_receive_msg.rudder = msg->position.z;
+        command_receive_msg.rudder = msg->position.y;
+        command_receive_msg.elevator = msg->position.z;
         command_receive_msg.aileron_r = msg->orientation.x;
         command_receive_msg.aileron_l = msg->orientation.y;
         command_receive_msg.dropping_device = msg->orientation.z;

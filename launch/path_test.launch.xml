@@ -1,0 +1,14 @@
+<launch>
+
+    <!-- Start the path_test node -->
+    <node pkg="tf2_ros" exec="static_transform_publisher" name="map_to_start"
+        output="screen" args="3 2 1 0 0 0 1.0 map start" />
+    <node pkg="tf2_ros" exec="static_transform_publisher" name="start_to_waypoint_1"
+        output="screen" args="3 2 1 0 0 0.258819 0.9659258 start waypoint_1" />
+    <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_2_to_waypoint_1"
+        output="screen" args="2 1 2 0 0 0 1.0 waypoint_1 waypoint_2" />
+    <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_3_to_waypoint_2"
+        output="screen" args="2 2 0 0 0 -0.258819 0.9659258 waypoint_2 waypoint_3" />
+    <node pkg="tf2_ros" exec="static_transform_publisher" name="start_to_goal"
+        output="screen" args="10 7 0 0 0 0 1.0 start goal" />
+</launch>

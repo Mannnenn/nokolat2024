@@ -7,6 +7,7 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
 #include <geometry_msgs/msg/transform_stamped.hpp>
+#include "std_msgs/msg/float32.hpp"
 
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
@@ -37,7 +38,7 @@ public:
         }
 
         timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(10),
+            std::chrono::milliseconds(10), // 100Hz?
             std::bind(&Tf2RpyNode::timer_callback, this));
 
         // パラメータの宣言
@@ -52,6 +53,18 @@ public:
 
         rpy_pub_ = this->create_publisher<nokolat2024_msg::msg::Rpy>(output_angular_topic_name, 10);
         angular_velocity_pub_ = this->create_publisher<nokolat2024_msg::msg::Rpy>(output_angular_velocity_topic_name, 10);
+
+        RCLCPP_INFO(this->get_logger(), "tf_2_rpy_node has been started.");
+
+        rclcpp::QoS qos_settings(10);
+        qos_settings.reliable();
+
+        roll_pub_ = this->create_publisher<std_msgs::msg::Float32>("/ui/roll", qos_settings);
+        pitch_pub_ = this->create_publisher<std_msgs::msg::Float32>("/ui/pitch", qos_settings);
+        yaw_pub_ = this->create_publisher<std_msgs::msg::Float32>("/ui/yaw", qos_settings);
+        roll_speed_pub_ = this->create_publisher<std_msgs::msg::Float32>("/ui/roll_speed", qos_settings);
+        pitch_speed_pub_ = this->create_publisher<std_msgs::msg::Float32>("/ui/pitch_speed", qos_settings);
+        yaw_speed_pub_ = this->create_publisher<std_msgs::msg::Float32>("/ui/yaw_speed", qos_settings);
     }
 
 private:
@@ -60,7 +73,18 @@ private:
         geometry_msgs::msg::TransformStamped transform_stamped;
         try
         {
-            transform_stamped = tf_buffer_->lookupTransform("base_link", "base_link_projected", tf2::TimePointZero);
+            transform_stamped = tf_buffer_->lookupTransform("base_link_projected", "base_link", tf2::TimePointZero);
+        }
+        catch (tf2::TransformException &ex)
+        {
+            RCLCPP_ERROR(this->get_logger(), "%s", ex.what());
+            return;
+        }
+
+        geometry_msgs::msg::TransformStamped transform_stamped_yaw;
+        try
+        {
+            transform_stamped_yaw = tf_buffer_->lookupTransform("map", "base_link_projected", tf2::TimePointZero);
         }
         catch (tf2::TransformException &ex)
         {
@@ -74,16 +98,39 @@ private:
             transform_stamped.transform.rotation.z,
             transform_stamped.transform.rotation.w);
 
+        tf2::Quaternion q_yaw(
+            transform_stamped_yaw.transform.rotation.x,
+            transform_stamped_yaw.transform.rotation.y,
+            transform_stamped_yaw.transform.rotation.z,
+            transform_stamped_yaw.transform.rotation.w);
+
         tf2::Matrix3x3 m(q);
+
+        tf2::Matrix3x3 m_yaw(q_yaw);
 
         double roll, pitch, yaw;
         m.getRPY(roll, pitch, yaw);
+
+        double roll_yaw, pitch_yaw, yaw_yaw;
+        m_yaw.getRPY(roll_yaw, pitch_yaw, yaw_yaw);
 
         nokolat2024_msg::msg::Rpy rpy_msg;
 
         rpy_msg.roll = roll;
         rpy_msg.pitch = pitch;
-        rpy_msg.yaw = yaw;
+        rpy_msg.yaw = yaw_yaw;
+
+        std_msgs::msg::Float32 roll_msg;
+        roll_msg.data = roll;
+        roll_pub_->publish(roll_msg);
+
+        std_msgs::msg::Float32 pitch_msg;
+        pitch_msg.data = pitch;
+        pitch_pub_->publish(pitch_msg);
+
+        std_msgs::msg::Float32 yaw_msg;
+        yaw_msg.data = yaw_yaw;
+        yaw_pub_->publish(yaw_msg);
 
         // パブリッシュ
         rpy_pub_->publish(rpy_msg);
@@ -91,7 +138,7 @@ private:
         // 履歴を保存
         roll_history_.push_back(roll);
         pitch_history_.push_back(pitch);
-        yaw_history_.push_back(yaw);
+        yaw_history_.push_back(yaw_yaw);
 
         rclcpp::Time current_time = this->now();
         if (last_time_.seconds() == 0)
@@ -105,11 +152,23 @@ private:
         // 　中心差分法で角速度を計算
         if (roll_history_.size() > 3)
         {
-            double roll_diff = (roll_history_[2] - roll_history_[0]) / (2 * diff.seconds());
-            double pitch_diff = (pitch_history_[2] - pitch_history_[0]) / (2 * diff.seconds());
-            double yaw_diff = (yaw_history_[2] - yaw_history_[0]) / (2 * diff.seconds());
+            double roll_diff = angle_diff(roll_history_[2], roll_history_[0]) / (2 * diff.seconds());
+            double pitch_diff = angle_diff(pitch_history_[2], pitch_history_[0]) / (2 * diff.seconds());
+            double yaw_diff = angle_diff(yaw_history_[2], yaw_history_[0]) / (2 * diff.seconds());
 
             // RCLCPP_INFO(this->get_logger(), "roll_diff: %f, pitch_diff: %f, yaw_diff: %f", roll_diff, pitch_diff, yaw_diff);
+
+            std_msgs::msg::Float32 roll_speed_msg;
+            roll_speed_msg.data = roll_diff * 1000;
+            roll_speed_pub_->publish(roll_speed_msg);
+
+            std_msgs::msg::Float32 pitch_speed_msg;
+            pitch_speed_msg.data = pitch_diff * 1000;
+            pitch_speed_pub_->publish(pitch_speed_msg);
+
+            std_msgs::msg::Float32 yaw_speed_msg;
+            yaw_speed_msg.data = yaw_diff * 1000;
+            yaw_speed_pub_->publish(yaw_speed_msg);
 
             // 履歴を削除
             roll_history_.pop_front();
@@ -125,10 +184,29 @@ private:
         }
     }
 
+    // 角度の差を補正する関数
+    double angle_diff(double angle1, double angle2)
+    {
+        double diff = angle1 - angle2;
+        while (diff > M_PI)
+            diff -= 2 * M_PI;
+        while (diff < -M_PI)
+            diff += 2 * M_PI;
+        return diff;
+    }
+
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Publisher<nokolat2024_msg::msg::Rpy>::SharedPtr rpy_pub_;
     rclcpp::Publisher<nokolat2024_msg::msg::Rpy>::SharedPtr angular_velocity_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr roll_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr pitch_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr yaw_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr roll_speed_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr pitch_speed_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr yaw_speed_pub_;
+
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+    std::shared_ptr<tf2_ros::Buffer> tf_buffer_yaw_;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
     std::deque<double> roll_history_;

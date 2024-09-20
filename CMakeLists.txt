@@ -29,6 +29,7 @@ find_package(Eigen3 REQUIRED)
 
 
 include_directories(${EIGEN3_INCLUDE_DIR})
+include_directories(include)
 
 # install launch files
 install(
@@ -70,15 +71,12 @@ add_executable(position_estimation src/position_estimation.cpp)
 ament_target_dependencies(position_estimation rclcpp image_transport sensor_msgs cv_bridge OpenCV geometry_msgs yaml-cpp)
 target_link_libraries(position_estimation yaml-cpp)
 
-
 add_executable(point2pointStamped src/point2pointStamped.cpp)
 ament_target_dependencies(point2pointStamped rclcpp geometry_msgs nav_msgs)
-
 
 add_executable(cog_corrected src/cog_corrected.cpp)
 ament_target_dependencies(cog_corrected rclcpp sensor_msgs geometry_msgs image_transport cv_bridge OpenCV yaml-cpp)
 target_link_libraries(cog_corrected yaml-cpp)
-
 
 add_executable(pub_command src/pub_command.cpp)
 ament_target_dependencies(pub_command rclcpp sensor_msgs std_msgs)
@@ -93,11 +91,27 @@ add_executable(recive_command src/recive_command.cpp)
 ament_target_dependencies(recive_command rclcpp  geometry_msgs nokolat2024_msg)
 
 add_executable(tf2rpy src/tf2rpy.cpp)
-ament_target_dependencies(tf2rpy rclcpp  geometry_msgs tf2_ros nokolat2024_msg)
+ament_target_dependencies(tf2rpy rclcpp  geometry_msgs std_msgs tf2_ros nokolat2024_msg)
 
 add_executable(imu_tof2posAndQuat src/imu_tof2posAndQuat.cpp)
 ament_target_dependencies(imu_tof2posAndQuat rclcpp  geometry_msgs tf2_ros)
 
+add_executable(main_control src/main_control.cpp)
+ament_target_dependencies(main_control rclcpp  std_msgs geometry_msgs tf2_ros nokolat2024_msg)
+target_link_libraries(main_control yaml-cpp)
+
+add_executable(get_neutral_position src/get_neutral_position.cpp)
+ament_target_dependencies(get_neutral_position rclcpp nokolat2024_msg)
+
+add_executable(send_command src/send_command.cpp)
+ament_target_dependencies(send_command rclcpp nokolat2024_msg geometry_msgs)
+
+add_executable(path_generator src/path_generator.cpp)
+ament_target_dependencies(path_generator rclcpp geometry_msgs tf2_ros)
+target_link_libraries(path_generator Eigen3::Eigen)
+
+add_executable(rotation_counter src/rotation_counter.cpp)
+ament_target_dependencies(rotation_counter rclcpp std_msgs nokolat2024_msg)
 
 install(TARGETS
   tf_publisher
@@ -112,6 +126,11 @@ install(TARGETS
   recive_command
   tf2rpy
   imu_tof2posAndQuat
+  main_control
+  get_neutral_position
+  send_command
+  path_generator
+  rotation_counter
   DESTINATION lib/${PROJECT_NAME})
 
 
