@@ -197,6 +197,10 @@
             <param name="input_neutral_position_topic_name" value="$(var neutral_position)" />
             <param name="input_rotation_counter_topic_name" value="$(var rotation_counter)" />
 
+            <param name="input_cmd_vel_topic_name" value="$(var target_vel)" />
+            <param name="input_drop_timing_topic_name" value="$(var drop_timing)" />
+            <param name="input_throttle_off_timing_topic_name" value="$(var throttle_off_timing)" />
+
             <param name="output_command_topic_name" value="$(var send_command_explicit)" />
             <param name="output_counter_reset_topic_name"
                 value="$(var counter_reset)" />

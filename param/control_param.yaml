@@ -93,16 +93,18 @@ control_info_config:
       elevator:
         p: 300
       aileron:
-        p: 850
+        p: 650
       rudder:
         p: 1000
       pitch:
-        p: 0.2
+        p: 0.23
       nose_up_pitch: 1.2
     target:
-      throttle: 1000
+      throttle: 900
+      takeoff_throttle: 1100
       roll: 0
-      yaw: 0
-      altitude: 1.5
+      pitch: -0.2
     delay:
       accel: 0.5
+      decel: 1
+      land: 2
