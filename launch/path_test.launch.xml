@@ -104,7 +104,7 @@
             <param name="output_cmd_vel_topic_name" value="$(var target_vel)" />
             <param name="output_target_pose_topic_name" value="$(var target_pose)" />
         </node>
-        <node pkg="nokolat2024" exec="pub_drop_timing" name="pub_drop_timing" output="screen">
+        <node pkg="nokolat2024" exec="pub_timing" name="pub_timing" output="screen">
             <param name="output_drop_timing_topic_name" value="$(var drop_timing)" />
         </node>
 

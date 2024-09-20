@@ -910,6 +910,8 @@ private:
     rclcpp::Subscription<nokolat2024_msg::msg::Rpy>::SharedPtr rpy_subscriber_;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr rotation_counter_subscriber_;
 
+    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr drop_timing_subscriber_;
+
     rclcpp::Publisher<nokolat2024_msg::msg::Command>::SharedPtr command_publisher_;
     rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr rotation_counter_reset_publisher_;
 

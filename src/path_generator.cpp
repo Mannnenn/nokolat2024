@@ -25,7 +25,7 @@ public:
 
         publisher_ = this->create_publisher<geometry_msgs::msg::PoseArray>(output_path_topic_name, 10);
         timer_ = this->create_wall_timer(
-            std::chrono::seconds(10),
+            std::chrono::seconds(1),
             std::bind(&PathGenerator::on_timer, this));
     }
 

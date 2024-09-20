@@ -110,7 +110,7 @@ private:
 
             // double angle_diff = std::fabs(angle_to_target - yaw);
 
-            // 目標点が機体前方1m以内かつ角度差が30度以内、または目標点が機体の後方にある場合に次の目標点に切り替える
+            // 目標点が機体前方1m、または目標点が機体の後方にある場合に次の目標点に切り替える
             if (distance < 1 || dx + 0.5 > 0)
             {
                 current_target_index_++;
