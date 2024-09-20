@@ -21,37 +21,71 @@ control_info_config:
       center: 1000
       min: 368
 
+  convergence:
+    roll: 0.1
+    altitude: 0.3
+
   auto_turning:
     gain:
       elevator:
         p: 700
       aileron:
-        p: 850
+        p: 650
       pitch:
-        p: 0.3
-      nose_up_pitch: 1.4
+        p: 0.23
+      nose_up_pitch: 1.2
     target:
-      roll: 0
-      rudder: 0
-      pitch: -0.1
+      roll: -0.35
+      rudder: -200
+      pitch: -0.2
     delay:
-      rudder: 2
+      rudder: 0.5
+
+  rise_turning:
+    gain:
+      elevator:
+        p: 700
+      aileron:
+        p: 650
+      pitch:
+        p: 0.25
+      nose_up_pitch: 1.2
+    target:
+      roll: -0.35
+      rudder: -200
+      pitch: -0.2
+      upper_altitude: 2.0
+      rise:
+        throttle: 100
+        roll: -0.35
+        pitch: -0.2
+        rudder: -100
+    delay:
+      rudder: 0.5
+      throttle: 6
 
   eight_turning:
     gain:
       elevator:
-        p: 10
+        p: 700
       aileron:
-        p: 800
+        p: 650
+      pitch:
+        p: 0.25
+      nose_up_pitch: 1.2
     target:
       roll:
-        l: 0.0
-        r: 0.0
+        r: 0.32
+        l: -0.35
       rudder:
-        l: 300
-        r: 300
+        r: 200
+        l: -200
+      pitch:
+        r: -0.2
+        l: -0.2
+        recover: -0.1
     delay:
-      rudder: 30
+      rudder: 0.5
 
   auto_landing:
     gain:

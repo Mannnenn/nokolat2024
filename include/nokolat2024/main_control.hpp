@@ -25,21 +25,32 @@ namespace nokolat2024
 {
     namespace main_control
     {
+        const bool TRANSFER = 0;
+        const bool RECOVER = 1;
+
         // Define control mode
         enum CONTROL_MODE
         {
             MANUAL = 0,
             AUTO_TURNING = 1,
             AUTO_RISE_TURNING = 2,
-            AUTO_LANDING = 3,
-            AUTO_EIGHT = 4,
+            AUTO_EIGHT_TURNING = 3,
+            AUTO_LANDING = 4,
+        };
+
+        enum RISE_TURNING_MODE
+        {
+            LOWER_TURNING = 0,
+            RISE_TURNING = 1,
+            HIGHER_TURNING = 2,
         };
 
         enum EIGHT_TURNING_MODE
         {
             LEFT_TURNING = 0,
             RIGHT_TURNING = 1,
-            NEUTRAL_POSITION = 2,
+            NEUTRAL_POSITION_L = 2,
+            NEUTRAL_POSITION_R = 3,
         };
 
         // マップを初期化
@@ -47,8 +58,9 @@ namespace nokolat2024
             {CONTROL_MODE::MANUAL, "MANUAL"},
             {CONTROL_MODE::AUTO_TURNING, "AUTO_TURNING"},
             {CONTROL_MODE::AUTO_RISE_TURNING, "AUTO_RISE_TURNING"},
+            {CONTROL_MODE::AUTO_EIGHT_TURNING, "AUTO_EIGHT_TURNING"},
             {CONTROL_MODE::AUTO_LANDING, "AUTO_LANDING"},
-            {CONTROL_MODE::AUTO_EIGHT, "AUTO_EIGHT"}};
+        };
 
         struct ControlInfo_config
         {
@@ -81,10 +93,20 @@ namespace nokolat2024
         {
             double velocity_target;
             double altitude_target;
+            double throttle_target;
             double roll_target;
             double pitch_target;
-            double throttle_target;
             double rudder_target;
+        };
+
+        struct ControlInfo_target_rise : public ControlInfo_target
+        {
+            double lower_altitude_target;
+            double higher_altitude_target;
+            double rise_throttle_target;
+            double rise_roll_target;
+            double rise_pitch_target;
+            double rise_rudder_target;
         };
 
         struct ControlInfo_target_lr : public ControlInfo_target
@@ -93,6 +115,9 @@ namespace nokolat2024
             double roll_target_r;
             double rudder_target_l;
             double rudder_target_r;
+            double pitch_target_l;
+            double pitch_target_r;
+            double pitch_target_recover;
         };
         struct Command
         {
@@ -116,6 +141,8 @@ namespace nokolat2024
         {
             double delay_rudder;
             double delay_accel;
+            double delay_decel;
+            double delay_rise;
         };
     } // namespace main_control
 } // namespace nokolat2024
