@@ -166,6 +166,7 @@ private:
     {
         rotation_standard = msg->data * 2 * M_PI; // dataは何回転で1つ出力するかを示す。
         rotation_counter_ = 0;
+        is_first_counter_ = true;
         pub_counter();
     }
 

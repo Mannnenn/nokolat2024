@@ -10,7 +10,13 @@
 
 #include "std_msgs/msg/float32.hpp"
 #include "std_msgs/msg/string.hpp"
+
 #include "geometry_msgs/msg/point_stamped.hpp"
+#include "geometry_msgs/msg/pose_array.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "geometry_msgs/msg/twist.hpp"
+
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 
 #include "nokolat2024_msg/msg/rpy.hpp"
 #include "nokolat2024_msg/msg/command.hpp"
@@ -119,6 +125,15 @@ namespace nokolat2024
             double pitch_target_r;
             double pitch_target_recover;
         };
+
+        struct ControlInfo_target_land : public ControlInfo_target
+        {
+            double induction_altitude_target;
+            double induction_yaw_target;
+            double induction_pitch_target;
+            double takeoff_throttle_target;
+        };
+
         struct Command
         {
             double throttle;

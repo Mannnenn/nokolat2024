@@ -114,8 +114,8 @@ private:
         // calc position,In Realsense D455, the depth is the distance from the camera to the object.
 
         current_position_.x = depth_;
-        current_position_.y = (mean_x - center_x) * depth_ / focal_length;
-        current_position_.z = (mean_y - center_y) * depth_ / focal_length;
+        current_position_.y = -(mean_x - center_x) * depth_ / focal_length;
+        current_position_.z = -(mean_y - center_y) * depth_ / focal_length;
 
         double distance = std::sqrt(
             std::pow(current_position_.x - previous_position_.x, 2) +
@@ -144,13 +144,9 @@ private:
             z_history_.pop_front();
         }
 
-        double avg_x = std::accumulate(x_history_.begin(), x_history_.end(), 0.0) / x_history_.size();
-        double avg_y = std::accumulate(y_history_.begin(), y_history_.end(), 0.0) / y_history_.size();
-        double avg_z = std::accumulate(z_history_.begin(), z_history_.end(), 0.0) / z_history_.size();
-
-        position_.x = avg_x;
-        position_.y = avg_y;
-        position_.z = avg_z;
+        position_.x = std::accumulate(x_history_.begin(), x_history_.end(), 0.0) / x_history_.size();
+        position_.y = std::accumulate(y_history_.begin(), y_history_.end(), 0.0) / y_history_.size();
+        position_.z = std::accumulate(z_history_.begin(), z_history_.end(), 0.0) / z_history_.size();
 
         // printf("x: %f, y: %f\n", position_.x, position_.z);
 
@@ -169,8 +165,8 @@ private:
 
     geometry_msgs::msg::Point position_;
 
-    const double distance_threshold_ = 0.15;
-    const uint filter_rest_threshold_ = 2;
+    const double distance_threshold_ = 0.25;
+    const uint filter_rest_threshold_ = 5;
     uint ignore_count_;
     geometry_msgs::msg::Point current_position_;
     geometry_msgs::msg::Point previous_position_;

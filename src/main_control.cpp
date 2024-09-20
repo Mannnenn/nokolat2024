@@ -7,11 +7,16 @@ public:
     {
         // パラメータの宣言
         this->declare_parameter<std::string>("input_neutral_position_topic_name", "/neutral_position"); // パラメータの宣言
+
         this->declare_parameter<std::string>("input_command_explicit_topic_name", "/command_explicit");
         this->declare_parameter<std::string>("input_mode_topic_name", "/mode");
         this->declare_parameter<std::string>("input_angular_topic_name", "/rpy");
-        this->declare_parameter<std::string>("input_altitude_stamped_topic_name", "/altitude");
+
         this->declare_parameter<std::string>("input_rotation_counter_topic_name", "/rotation_counter");
+
+        this->declare_parameter<std::string>("input_cmd_vel_topic_name", "/cmd_vel");
+        this->declare_parameter<std::string>("input_drop_timing_topic_name", "/target_pose");
+        this->declare_parameter<std::string>("input_throttle_off_timing_topic_name", "/throttle_off");
 
         this->declare_parameter<std::string>("output_command_topic_name", "/command_send");
         this->declare_parameter<std::string>("output_counter_reset_topic_name", "/rotation_counter_reset");
@@ -19,16 +24,23 @@ public:
         // パラメータの取得
         std::string input_neutral_position_topic_name;
         this->get_parameter("input_neutral_position_topic_name", input_neutral_position_topic_name);
+
         std::string input_command_explicit_topic_name;
         this->get_parameter("input_command_explicit_topic_name", input_command_explicit_topic_name);
         std::string input_mode_topic_name;
         this->get_parameter("input_mode_topic_name", input_mode_topic_name);
         std::string input_angular_topic_name;
         this->get_parameter("input_angular_topic_name", input_angular_topic_name);
-        std::string input_altitude_stamped_topic_name;
-        this->get_parameter("input_altitude_stamped_topic_name", input_altitude_stamped_topic_name);
+
         std::string input_rotation_counter_topic_name;
         this->get_parameter("input_rotation_counter_topic_name", input_rotation_counter_topic_name);
+
+        std::string input_cmd_vel_topic_name;
+        this->get_parameter("input_cmd_vel_topic_name", input_cmd_vel_topic_name);
+        std::string input_drop_timing_topic_name;
+        this->get_parameter("input_drop_timing_topic_name", input_drop_timing_topic_name);
+        std::string input_throttle_off_timing_topic_name;
+        this->get_parameter("input_throttle_off_timing_topic_name", input_throttle_off_timing_topic_name);
 
         std::string output_command_topic_name;
         this->get_parameter("output_command_topic_name", output_command_topic_name);
@@ -39,10 +51,16 @@ public:
 
         // SubscriberとPublisherの設定
         neutral_position_subscriber_ = this->create_subscription<nokolat2024_msg::msg::Command>(input_neutral_position_topic_name, qos, std::bind(&MainControlNode::neutral_position_callback, this, std::placeholders::_1));
+
         command_explicit_subscriber_ = this->create_subscription<nokolat2024_msg::msg::Command>(input_command_explicit_topic_name, qos, std::bind(&MainControlNode::command_explicit_callback, this, std::placeholders::_1));
         mode_subscriber_ = this->create_subscription<std_msgs::msg::String>(input_mode_topic_name, qos, std::bind(&MainControlNode::mode_callback, this, std::placeholders::_1));
         rpy_subscriber_ = this->create_subscription<nokolat2024_msg::msg::Rpy>(input_angular_topic_name, qos, std::bind(&MainControlNode::rpy_callback, this, std::placeholders::_1));
+
         rotation_counter_subscriber_ = this->create_subscription<std_msgs::msg::Float32>(input_rotation_counter_topic_name, qos, std::bind(&MainControlNode::rotation_counter_callback, this, std::placeholders::_1));
+
+        cmd_vel_subscriber_ = this->create_subscription<geometry_msgs::msg::Twist>(input_cmd_vel_topic_name, qos, std::bind(&MainControlNode::cmd_vel_callback, this, std::placeholders::_1));
+        drop_timing_subscriber_ = this->create_subscription<std_msgs::msg::String>(input_drop_timing_topic_name, qos, std::bind(&MainControlNode::drop_timing_callback, this, std::placeholders::_1));
+        throttle_off_timing_subscriber_ = this->create_subscription<std_msgs::msg::String>(input_throttle_off_timing_topic_name, qos, std::bind(&MainControlNode::throttle_off_timing_callback, this, std::placeholders::_1));
 
         command_publisher_ = this->create_publisher<nokolat2024_msg::msg::Command>(output_command_topic_name, qos);
         rotation_counter_reset_publisher_ = this->create_publisher<std_msgs::msg::Float32>(output_counter_reset_topic_name, qos);
@@ -167,6 +185,7 @@ public:
 
         rise_turning_delay.delay_rudder = control_info_config_["rise_turning"]["delay"]["rudder"].as<double>();
         rise_turning_delay.delay_rise = control_info_config_["rise_turning"]["delay"]["throttle"].as<double>();
+        rise_turning_delay.delay_decel = control_info_config_["rise_turning"]["delay"]["decel"].as<double>();
 
         eight_turning_delay.delay_rudder = control_info_config_["eight_turning"]["delay"]["rudder"].as<double>();
 
@@ -194,7 +213,7 @@ public:
         }
 
         timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(50), // 早すぎると通信エラーが発生する
+            std::chrono::milliseconds(75), // 早すぎると通信エラーが発生する
             std::bind(&MainControlNode::timer_callback, this));
 
         ros_clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
@@ -243,6 +262,29 @@ private:
         turning_count = msg->data;
     }
 
+    void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
+    {
+        auto_landing_target.induction_altitude_target = msg->linear.z;
+        auto_landing_target.induction_pitch_target = msg->angular.y;
+        auto_landing_target.induction_yaw_target = msg->angular.z;
+    }
+
+    void drop_timing_callback(const std_msgs::msg::String::SharedPtr msg)
+    {
+        if (msg->data == "drop")
+        {
+            drop_timing = true;
+        }
+    }
+
+    void throttle_off_timing_callback(const std_msgs::msg::String::SharedPtr msg)
+    {
+        if (msg->data == "throttle_off")
+        {
+            throttle_off_timing = true;
+        }
+    }
+
     void timer_callback()
     {
         geometry_msgs::msg::TransformStamped transform_stamped;
@@ -271,8 +313,11 @@ private:
     {
         if (control_mode_ == nokolat2024::main_control::control_mode_map.at(nokolat2024::main_control::CONTROL_MODE::MANUAL))
         {
+            // それぞれのモードの初回呼び出し用。マニュアルに戻したら初期化
             mode_init = true;
-            // reset_rotation_count(1);
+
+            // 旋回カウンタもリセット
+            reset_rotation_count(1);
         }
 
         if (control_mode_ == nokolat2024::main_control::control_mode_map.at(nokolat2024::main_control::CONTROL_MODE::AUTO_TURNING))
@@ -280,6 +325,7 @@ private:
             if (mode_init)
             {
                 RCLCPP_INFO(this->get_logger(), "MODE: AUTO_TURNING");
+
                 auto_turning_target.altitude_target = get_target_altitude();
                 auto_turning_target.throttle_target = get_target_throttle();
                 mode_init = false;
@@ -333,6 +379,10 @@ private:
             if (mode_init)
             {
                 RCLCPP_INFO(this->get_logger(), "MODE: AUTO_LANDING");
+
+                // 自動離着陸用のタイミングもリセット
+                drop_timing = false;
+                throttle_off_timing = false;
 
                 mode_init = false;
                 start_mode_time_ = ros_clock->now(); // 開始の時間を取得
@@ -472,7 +522,7 @@ private:
             aileron_r = aileron_control_r(rise_turning_target.roll_target, rise_turning_gain.aileron_gain);
             rudder = rudder_control(rise_turning_target.rudder_target, rise_turning_delay.delay_rudder);
 
-            if (abs(turning_count) >= 2)
+            if (abs(turning_count) >= 3)
             {
                 rise_turning_mode = nokolat2024::main_control::RISE_TURNING_MODE::RISE_TURNING;
                 start_mode_time_ = ros_clock->now();
@@ -498,19 +548,22 @@ private:
             {
                 rise_turning_mode = nokolat2024::main_control::RISE_TURNING_MODE::HIGHER_TURNING;
                 reset_rotation_count(1);
-                recover_start_time_ = ros_clock->now(); // ラダーを定常旋回の位置に戻す
+                start_mode_time_ = ros_clock->now();
                 RCLCPP_INFO(this->get_logger(), "MODE::CHANGE TO TURN");
             }
         }
 
         if (rise_turning_mode == nokolat2024::main_control::RISE_TURNING_MODE::HIGHER_TURNING) // 低い高度で2周する,上昇が成功していない間は
         {
-            throttle = throttle_control(rise_turning_target.throttle_target);
-            elevator = elevator_control(rise_turning_target.higher_altitude_target, rise_turning_gain.pitch_gain, rise_turning_target.pitch_target, rise_turning_gain.nose_up_pitch_gain, rise_turning_gain.elevator_gain);
-            aileron_l = aileron_control_l(rise_turning_target.roll_target, rise_turning_gain.aileron_gain);
-            aileron_r = aileron_control_r(rise_turning_target.roll_target, rise_turning_gain.aileron_gain);
-            rudder = rudder_control_recover(rise_turning_target.rudder_target, rise_turning_delay.delay_rudder);
+            rclcpp::Duration diff = ros_clock->now() - start_mode_time_;
+            throttle = throttle_control(rise_turning_target.throttle_target + rise_turning_target.rise_throttle_target * linearDecrease(diff.seconds(), rise_turning_delay.delay_decel));
+            elevator = elevator_control(rise_turning_target.higher_altitude_target, rise_turning_gain.pitch_gain, rise_turning_target.pitch_target + (rise_turning_target.rise_pitch_target - rise_turning_target.pitch_target) * linearIncrease(diff.seconds(), rise_turning_delay.delay_decel), rise_turning_gain.nose_up_pitch_gain, rise_turning_gain.elevator_gain);
+            aileron_l = aileron_control_l(rise_turning_target.rise_roll_target, rise_turning_gain.aileron_gain);
+            aileron_r = aileron_control_r(rise_turning_target.rise_roll_target, rise_turning_gain.aileron_gain);
+            rudder = neutral_position_.rudder + rise_turning_target.rudder_target + rise_turning_target.rise_rudder_target;
         }
+
+        drop = drop_control(config.drop_min);
     }
 
     void auto_eight_turning_control()
@@ -559,16 +612,14 @@ private:
 
         if (eight_turning_mode == nokolat2024::main_control::EIGHT_TURNING_MODE::NEUTRAL_POSITION_L)
         {
+            rclcpp::Duration diff = ros_clock->now() - recover_start_time_;
 
             // 水平の基準状態に戻す
             throttle = throttle_control(eight_turning_target.throttle_target);
-            elevator = elevator_control(eight_turning_target.altitude_target, eight_turning_gain.pitch_gain, eight_turning_target.pitch_target_recover, eight_turning_gain.nose_up_pitch_gain, eight_turning_gain.elevator_gain);
+            elevator = elevator_control(eight_turning_target.altitude_target, eight_turning_gain.pitch_gain, eight_turning_target.pitch_target_recover + (eight_turning_target.pitch_target - eight_turning_target.pitch_target_recover) * linearDecrease(diff.seconds(), eight_turning_delay.delay_rudder), eight_turning_gain.nose_up_pitch_gain, eight_turning_gain.elevator_gain);
             aileron_l = aileron_control_l(0, eight_turning_gain.aileron_gain); // Roll = 0
             aileron_r = aileron_control_r(0, eight_turning_gain.aileron_gain);
-            rudder = rudder_control_recover(eight_turning_target.rudder_target_l, eight_turning_delay.delay_rudder);
-
-            rclcpp::Time current_time = ros_clock->now();
-            rclcpp::Duration diff = current_time - recover_start_time_;
+            rudder = neutral_position_.rudder + eight_turning_target.rudder_target_l * linearDecrease(diff.seconds(), eight_turning_delay.delay_rudder);
 
             // 一定時間経過+ロールが基準値になったら右旋回に移行
             if (-roll_convergence_threshold < roll_error && roll_error < roll_convergence_threshold &&
@@ -582,16 +633,14 @@ private:
 
         if (eight_turning_mode == nokolat2024::main_control::EIGHT_TURNING_MODE::NEUTRAL_POSITION_R)
         {
+            rclcpp::Duration diff = ros_clock->now() - recover_start_time_;
 
             // 水平の基準状態に戻す
             throttle = throttle_control(eight_turning_target.throttle_target);
-            elevator = elevator_control(eight_turning_target.altitude_target, eight_turning_gain.pitch_gain, eight_turning_target.pitch_target_recover, eight_turning_gain.nose_up_pitch_gain, eight_turning_gain.elevator_gain);
+            elevator = elevator_control(eight_turning_target.altitude_target, eight_turning_gain.pitch_gain, eight_turning_target.pitch_target_recover + (eight_turning_target.pitch_target - eight_turning_target.pitch_target_recover) * linearDecrease(diff.seconds(), eight_turning_delay.delay_rudder), eight_turning_gain.nose_up_pitch_gain, eight_turning_gain.elevator_gain);
             aileron_l = aileron_control_l(0, eight_turning_gain.aileron_gain); // Roll = 0
             aileron_r = aileron_control_r(0, eight_turning_gain.aileron_gain);
-            rudder = rudder_control_recover(eight_turning_target.rudder_target_r, eight_turning_delay.delay_rudder);
-
-            rclcpp::Time current_time = ros_clock->now();
-            rclcpp::Duration diff = current_time - recover_start_time_;
+            rudder = neutral_position_.rudder + eight_turning_target.rudder_target_l * linearDecrease(diff.seconds(), eight_turning_delay.delay_rudder);
 
             // 一定時間経過+ロールが基準値になったら左旋回に移行
             if (-roll_convergence_threshold < roll_error && roll_error < roll_convergence_threshold &&
@@ -858,7 +907,7 @@ private:
     nokolat2024::main_control::DelayWindow eight_turning_delay;
 
     nokolat2024::main_control::ControlInfo_gain auto_landing_gain;
-    nokolat2024::main_control::ControlInfo_target auto_landing_target;
+    nokolat2024::main_control::ControlInfo_target_land auto_landing_target;
     nokolat2024::main_control::DelayWindow auto_landing_delay;
 
     nokolat2024::main_control::Pose pose_received_;
@@ -885,6 +934,9 @@ private:
 
     double turning_count;
 
+    bool drop_timing = false;
+    bool throttle_off_timing = false;
+
     nokolat2024::main_control::RISE_TURNING_MODE rise_turning_mode;
     nokolat2024::main_control::EIGHT_TURNING_MODE eight_turning_mode;
 
@@ -905,10 +957,16 @@ private:
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
     rclcpp::Subscription<nokolat2024_msg::msg::Command>::SharedPtr neutral_position_subscriber_;
+
     rclcpp::Subscription<nokolat2024_msg::msg::Command>::SharedPtr command_explicit_subscriber_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr mode_subscriber_;
     rclcpp::Subscription<nokolat2024_msg::msg::Rpy>::SharedPtr rpy_subscriber_;
+
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr rotation_counter_subscriber_;
+
+    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_subscriber_;
+    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr drop_timing_subscriber_;
+    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr throttle_off_timing_subscriber_;
 
     rclcpp::Publisher<nokolat2024_msg::msg::Command>::SharedPtr command_publisher_;
     rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr rotation_counter_reset_publisher_;

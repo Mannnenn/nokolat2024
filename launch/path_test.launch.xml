@@ -1,14 +1,155 @@
 <launch>
+    <!-- 左カメラからのトピック名 -->
+    <arg name="left_image_rect_raw" default="/infra_cam/left/infra1/image_rect_raw" />
+    <arg name="left_image_diff" default="/infra_cam/left/image_diff" />
+    <arg name="left_image_diff_bivaluation" default="/infra_cam/left/image_diff_bivaluation" />
+    <arg name="left_cog" default="/infra_cam/left_cog" />
+    <arg name="left_camera_info" default="/infra_cam/left/infra1/camera_info" />
+    <arg name="left_camera_view_area" default="/infra_cam/left/infra1/camera_view_area" />
 
-    <!-- Start the path_test node -->
-    <node pkg="tf2_ros" exec="static_transform_publisher" name="map_to_start"
-        output="screen" args="3 2 1 0 0 0 1.0 map start" />
-    <node pkg="tf2_ros" exec="static_transform_publisher" name="start_to_waypoint_1"
-        output="screen" args="3 2 1 0 0 0.258819 0.9659258 start waypoint_1" />
-    <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_2_to_waypoint_1"
-        output="screen" args="2 1 2 0 0 0 1.0 waypoint_1 waypoint_2" />
-    <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_3_to_waypoint_2"
-        output="screen" args="2 2 0 0 0 -0.258819 0.9659258 waypoint_2 waypoint_3" />
-    <node pkg="tf2_ros" exec="static_transform_publisher" name="start_to_goal"
-        output="screen" args="10 7 0 0 0 0 1.0 start goal" />
+    <!-- 右カメラからのトピック名 -->
+    <arg name="right_image_rect_raw" default="/infra_cam/right/infra2/image_rect_raw" />
+    <arg name="right_image_diff" default="/infra_cam/right/image_diff" />
+    <arg name="right_image_diff_bivaluation" default="/infra_cam/right/image_diff_bivaluation" />
+    <arg name="right_cog" default="/infra_cam/right_cog" />
+    <arg name="right_camera_info" default="/infra_cam/right/infra2/camera_info" />
+    <arg name="right_camera_view_area" default="/infra_cam/right/infra2/camera_view_area" />
+
+    <!-- カメラからの情報を処理して得たトピック名 -->
+    <arg name="depth" default="/infra_cam/depth" />
+    <arg name="position" default="/infra_cam/position" />
+    <arg name="position_stamped" default="/infra_cam/position_stamped" />
+    <arg name="velocity" default="/infra_cam/velocity" />
+
+    <!-- マイコンからの情報のトピック名 -->
+    <arg name="imu_tof" default="/imu_tof" />
+    <arg name="recieve_command" default="/controller" />
+
+    <!-- マイコンへの情報のトピック名 -->
+    <arg name="send_command" default="/command" />
+
+    <!-- マイコンからの情報を処理して得たトピック名 -->
+    <arg name="altitude" default="/onboard/altitude" />
+    <arg name="quat" default="/onboard/quat" />
+    <arg name="propo_explicit" default="/onboard/propo_explicit" />
+    <arg name="mode" default="/onboard/mode" />
+    <arg name="neutral_position" default="/onboard/neutral_position" />
+    <arg name="counter_reset" default="/onboard/rotation_counter_reset" />
+    <arg name="rotation_counter" default="/onboard/rotation_counter" />
+
+    <!-- 機体角の制御用のトピック名 -->
+    <arg name="rpy_angular" default="/onboard/rpy_angular" />
+    <arg name="rpy_angular_speed" default="/onboard/rpy_angular_speed" />
+    <arg name="send_command_explicit" default="/onboard/command_explicit" />
+
+    <!-- 自動離着陸用のトピック -->
+    <arg name="path" default="/landing/path" />
+    <arg name="drop_timing" default="/landing/drop_timing" />
+    <arg name="target_vel" default="/landing/target_vel" />
+    <arg name="target_pose" default="/landing/target_pose" />
+
+
+    <!-- カメラのパラメータファイルのパス -->
+    <arg name="camera_param_left"
+        default="$(find-pkg-share nokolat2024)/param/camera_param_left.yaml" />
+    <arg name="camera_param_right"
+        default="$(find-pkg-share nokolat2024)/param/camera_param_right.yaml" />
+
+    <!-- コントローラーのパラメーターファイルのパス-->
+    <arg name="control_param"
+        default="$(find-pkg-share nokolat2024)/param/control_param.yaml" />
+
+
+    <!-- カメラ関係-->
+
+    <!-- マイコン関係 -->
+    <group>
+
+
+        <node pkg="nokolat2024" exec="recive_command" name="recive_command" output="screen">
+            <param name="input_propo_topic_name" value="$(var recieve_command)" />
+            <param name="output_command_explicit_topic_name" value="$(var propo_explicit)" />
+            <param name="output_mode_topic_name" value="$(var mode)" />
+
+        </node>
+
+
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="map_to_camera"
+            output="screen" args="0 0 1 0 0.2164396 0 -0.976296 map camera_link" />
+
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="base_link_to_imu_link"
+            output="screen" args="0.065 0 0 0 0 0 1 base_link imu_link" />
+
+        <node pkg="tf2_ros" exec="static_transform_publisher"
+            name="camera_link_to_right_camera_link"
+            output="screen" args="0 0 0 0 0 0 1 camera_link right_link" />
+
+
+        <node pkg="micro_ros_agent" exec="micro_ros_agent" name="micro_ros_agent" output="screen"
+            args="udp4 --port 8888" />
+
+    </group>
+
+    <group>
+        <push_ros_namespace namespace="landing" />
+        <!-- Start the path_test node -->
+
+
+        <node pkg="nokolat2024" exec="path_generator" name="path_generator" output="screen">
+            <param name="output_path_topic_name" value="$(var path)" />
+        </node>
+        <node pkg="nokolat2024" exec="path_followers" name="path_followers" output="screen">
+            <param name="input_path_topic_name" value="$(var path)" />
+            <param name="input_mode_topic_name" value="$(var mode)" />
+            <param name="output_cmd_vel_topic_name" value="$(var target_vel)" />
+            <param name="output_target_pose_topic_name" value="$(var target_pose)" />
+        </node>
+        <node pkg="nokolat2024" exec="pub_timing" name="pub_timing" output="screen">
+            <param name="output_drop_timing_topic_name" value="$(var drop_timing)" />
+        </node>
+
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="map_to_waypoint_0"
+            output="screen" args="37 -1.95 0 0 0 1 0 map waypoint_0" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_0_to_waypoint_1"
+            output="screen" args="4 0 0.5 0 0 0 1 waypoint_0 waypoint_1" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_1_to_waypoint_2"
+            output="screen" args="13 0 2 0 0 0 1 waypoint_0 waypoint_2" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_2_to_waypoint_3"
+            output="screen" args="14 0 2 0 0 0 1 waypoint_0 waypoint_3" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_0_to_waypoint_4"
+            output="screen" args="17 -1 2 0 0 0 1 waypoint_0 waypoint_4" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_4_to_waypoint_5"
+            output="screen" args="20 -1.95 2 0 0 0 1 waypoint_0 waypoint_5" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_5_to_waypoint_6"
+            output="screen" args="21 -1.95 2 0 0 0 1 waypoint_0 waypoint_6" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_6_to_waypoint_7"
+            output="screen" args="27 -1.95 0.5 0 0 0 1 waypoint_0 waypoint_7" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_7_to_waypoint_8"
+            output="screen" args="32 -1.95 0 0 0 0 1 waypoint_0 waypoint_8" />
+
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_1_to_drop_point"
+            output="screen" args="13 0 2 0 0 0 1 waypoint_0 drop_point" />
+        <node pkg="tf2_ros" exec="static_transform_publisher"
+            name="waypoint_5_to_throttle_off_point"
+            output="screen" args="21 -1.95 1.5 0 0 0 1 waypoint_0 throttle_off_point" />
+
+
+    </group>
+
+    <node pkg="nokolat2024" exec="path_test" name="path_test" />
+    <node pkg="joy" exec="joy_node" name="joy_node" output="screen" />
+    <group>
+        <push_ros_namespace namespace="area" />
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="map_to_origin"
+            output="screen" args="-1 14.5 0 0 0 0 1 map origin" />
+        <node pkg="nokolat2024" exec="pub_area" name="pub_area" output="screen" />
+    </group>
+
+    <node pkg="rviz2" exec="rviz2" name="rviz"
+        args="-d $(find-pkg-share nokolat2024)/rviz/rvizmodel.rviz" output="screen" />
+
+
+    <node pkg="nokolat2024" name="timer" exec="timer" output="screen" />
+
+
 </launch>
