@@ -13,20 +13,20 @@ find_package(yaml-cpp REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(image_transport REQUIRED)
 
+find_package(tf2 REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(tf2_ros REQUIRED)
-find_package(urdf REQUIRED)
-find_package(camera_info_manager REQUIRED)
-find_package(geometry_msgs REQUIRED)
-find_package(sensor_msgs REQUIRED)
-find_package(nav_msgs REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(geometry_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
+find_package(urdf REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(camera_info_manager REQUIRED)
 find_package(message_filters REQUIRED)
 find_package(nokolat2024_msg REQUIRED)
-find_package(Eigen3 REQUIRED)
 
+find_package(Eigen3 REQUIRED)
 
 include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(include)
@@ -116,12 +116,16 @@ ament_target_dependencies(rotation_counter rclcpp std_msgs nokolat2024_msg)
 add_executable(pub_ui_command src/pub_ui_command.cpp)
 ament_target_dependencies(pub_ui_command rclcpp std_msgs geometry_msgs tf2_ros nokolat2024_msg)
 
+add_executable(pub_vel src/pub_vel.cpp)
+ament_target_dependencies(pub_vel rclcpp geometry_msgs tf2 tf2_ros tf2_geometry_msgs)
+
 install(TARGETS
   tf_publisher
   image_diff_extraction
   depth_estimation
   position_estimation
   point2pointStamped
+  pub_vel
   cog_corrected
   pub_command
   image_sync_node

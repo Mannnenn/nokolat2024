@@ -57,12 +57,12 @@ control_info_config:
       upper_altitude: 2.0
       rise:
         throttle: 100
-        roll: -0.35
-        pitch: -0.2
-        rudder: -100
+        roll: -0.40
+        pitch: -0.3
+        rudder: -50
     delay:
       rudder: 0.5
-      throttle: 6
+      throttle: 7
 
   eight_turning:
     gain:

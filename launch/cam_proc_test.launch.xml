@@ -17,6 +17,7 @@
     <arg name="depth" default="/infra_cam/depth" />
     <arg name="position" default="/infra_cam/position" />
     <arg name="position_stamped" default="/infra_cam/position_stamped" />
+    <arg name="velocity" default="/infra_cam/velocity" />
 
     <!-- マイコンからの情報のトピック名 -->
     <arg name="imu_tof" default="/imu_tof" />
@@ -82,12 +83,14 @@
             <param name="yaml_left_file" value="$(var camera_param_left)" />
             <param name="yaml_right_file" value="$(var camera_param_right)" />
         </node>
+
         <node pkg="nokolat2024" exec="depth_estimation" name="depth_estimation" output="screen">
             <param name="input_left_cog_topic_name" value="$(var left_cog)" />
             <param name="input_right_cog_topic_name" value="$(var right_cog)" />
             <param name="output_depth_topic_name" value="$(var depth)" />
             <param name="yaml_right_file" value="$(var camera_param_right)" />
         </node>
+
         <node pkg="nokolat2024" exec="position_estimation" name="position_estimation"
             output="screen">
             <param name="input_left_cog_topic_name" value="$(var left_cog)" />
@@ -99,7 +102,12 @@
 
         <node pkg="nokolat2024" exec="point2pointStamped" name="point2pointStamped" output="screen">
             <param name="input_position_topic_name" value="$(var position)" />
-            <param name="output_stamped_topic_name" value="$(var position_stamped)" />
+            <param name="output_position_stamped_topic_name" value="$(var position_stamped)" />
+        </node>
+
+        <node pkg="nokolat2024" exec="pub_vel" name="pub_vel" output="screen">
+            <param name="input_position_stamped_topic_name" value="$(var position_stamped)" />
+            <param name="output_twist_topic_name" value="$(var velocity)" />
         </node>
 
 

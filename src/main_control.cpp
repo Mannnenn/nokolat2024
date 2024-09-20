@@ -472,7 +472,7 @@ private:
             aileron_r = aileron_control_r(rise_turning_target.roll_target, rise_turning_gain.aileron_gain);
             rudder = rudder_control(rise_turning_target.rudder_target, rise_turning_delay.delay_rudder);
 
-            if (turning_count >= 2)
+            if (abs(turning_count) >= 2)
             {
                 rise_turning_mode = nokolat2024::main_control::RISE_TURNING_MODE::RISE_TURNING;
                 start_mode_time_ = ros_clock->now();
