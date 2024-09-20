@@ -44,7 +44,7 @@ public:
         }
 
         timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(25),
+            std::chrono::seconds(1),
             std::bind(&PolygonPublisher::publishPolygons, this));
     }
 
@@ -77,6 +77,12 @@ private:
             }
 
             publisher_pole_[i]->publish(message);
+        }
+
+        count_++;
+        if (count_ > 100)
+        {
+            rclcpp::shutdown();
         }
     }
 
@@ -127,6 +133,8 @@ private:
     std::vector<rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr> publisher_pole_;
 
     rclcpp::TimerBase::SharedPtr timer_;
+
+    int count_ = 0;
 };
 
 int main(int argc, char *argv[])

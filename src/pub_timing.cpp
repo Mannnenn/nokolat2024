@@ -35,32 +35,44 @@ private:
         geometry_msgs::msg::TransformStamped transformStamped;
         try
         {
-            transformStamped = tf_buffer_.lookupTransform("waypoint_2", "base_link", tf2::TimePointZero);
+            transformStamped = tf_buffer_.lookupTransform("drop_point", "base_link", tf2::TimePointZero);
             if (0.0 < transformStamped.transform.translation.x && transformStamped.transform.translation.x < 2)
             {
                 auto message = std_msgs::msg::String();
                 message.data = "drop";
                 publisher_drop_->publish(message);
             }
+            else
+            {
+                auto message = std_msgs::msg::String();
+                message.data = "wait";
+                publisher_drop_->publish(message);
+            }
         }
         catch (tf2::TransformException &ex)
         {
-            RCLCPP_WARN(this->get_logger(), "Could not transform base_link to waypoint_2: %s", ex.what());
+            RCLCPP_WARN(this->get_logger(), "Could not transform base_link to drop_point: %s", ex.what());
         }
 
         try
         {
-            transformStamped = tf_buffer_.lookupTransform("waypoint_6", "base_link", tf2::TimePointZero);
-            if (1 < transformStamped.transform.translation.x)
+            transformStamped = tf_buffer_.lookupTransform("throttle_off_point", "base_link", tf2::TimePointZero);
+            if (0 < transformStamped.transform.translation.x)
             {
                 auto message = std_msgs::msg::String();
                 message.data = "throttle_off";
                 publisher_throttle_off_->publish(message);
             }
+            else
+            {
+                auto message = std_msgs::msg::String();
+                message.data = "wait";
+                publisher_throttle_off_->publish(message);
+            }
         }
         catch (tf2::TransformException &ex)
         {
-            RCLCPP_WARN(this->get_logger(), "Could not transform base_link to waypoint_3: %s", ex.what());
+            RCLCPP_WARN(this->get_logger(), "Could not transform base_link to throttle_off_point: %s", ex.what());
         }
     }
 

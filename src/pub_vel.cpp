@@ -6,6 +6,8 @@
 #include <geometry_msgs/msg/point_stamped.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
 
+#include <std_msgs/msg/float32.hpp>
+
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
@@ -21,16 +23,20 @@ public:
 
         this->declare_parameter<std::string>("input_position_stamped_topic_name", "/point_stamped");
         this->declare_parameter<std::string>("output_twist_topic_name", "/twist");
+        this->declare_parameter<std::string>("output_speed_topic_name", "/speed");
 
         // パラメータの取得
         std::string input_position_stamped_topic_name;
         this->get_parameter("input_position_stamped_topic_name", input_position_stamped_topic_name);
         std::string output_twist_topic_name;
         this->get_parameter("output_twist_topic_name", output_twist_topic_name);
+        std::string output_speed_topic_name;
+        this->get_parameter("output_speed_topic_name", output_speed_topic_name);
 
         subscription_ = this->create_subscription<geometry_msgs::msg::PointStamped>(
             input_position_stamped_topic_name, 10, std::bind(&VelocityCalculator::pointCallback, this, std::placeholders::_1));
         publisher_ = this->create_publisher<geometry_msgs::msg::TwistStamped>(output_twist_topic_name, 10);
+        publisher_speed_ = this->create_publisher<std_msgs::msg::Float32>(output_speed_topic_name, 10);
 
         last_time = this->now();
     }
@@ -101,6 +107,17 @@ private:
 
             publisher_->publish(velocity_msg);
 
+            velocity_buffer_.push_back(velocity_norm);
+
+            if (velocity_buffer_.size() > 10)
+            {
+                velocity_buffer_.pop_front();
+            }
+
+            std_msgs::msg::Float32 speed_msg;
+            speed_msg.data = std::accumulate(velocity_buffer_.begin(), velocity_buffer_.end(), 0.0) / velocity_buffer_.size();
+            publisher_speed_->publish(speed_msg);
+
             last_point_ = std::make_shared<geometry_msgs::msg::PointStamped>(transformed_point);
             last_time = this->now();
         }
@@ -108,11 +125,14 @@ private:
 
     rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr subscription_;
     rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr publisher_;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr publisher_speed_;
+
     geometry_msgs::msg::PointStamped::SharedPtr last_point_;
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
     std::deque<geometry_msgs::msg::PointStamped::SharedPtr> point_buffer_;
+    std::deque<double> velocity_buffer_;
 
     rclcpp::Time last_time;
 };

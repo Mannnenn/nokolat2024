@@ -42,7 +42,7 @@ private:
         double vertical_fov = 2 * atan(height / (2 * fy));
 
         // 四角錐の頂点を計算
-        double depth = 30.0; // 視野の深さを1メートルと仮定
+        double depth = 40.0; // 視野の深さを1メートルと仮定
         double half_width = depth * tan(horizontal_fov / 2);
         double half_height = depth * tan(vertical_fov / 2);
 
@@ -103,6 +103,12 @@ private:
         pub2_->publish(triangle2);
         pub3_->publish(triangle3);
         pub4_->publish(triangle4);
+
+        count_++;
+        if (count_ > 100)
+        {
+            rclcpp::shutdown();
+        }
     }
 
     rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr pub1_;
@@ -110,6 +116,8 @@ private:
     rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr pub3_;
     rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr pub4_;
     rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr sub_;
+
+    int count_ = 0;
 };
 
 int main(int argc, char **argv)

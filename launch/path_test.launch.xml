@@ -127,6 +127,12 @@
         <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_7_to_waypoint_8"
             output="screen" args="32 -1.95 0 0 0 0 1 waypoint_0 waypoint_8" />
 
+        <node pkg="tf2_ros" exec="static_transform_publisher" name="waypoint_1_to_drop_point"
+            output="screen" args="13 0 2 0 0 0 1 waypoint_0 drop_point" />
+        <node pkg="tf2_ros" exec="static_transform_publisher"
+            name="waypoint_5_to_throttle_off_point"
+            output="screen" args="21 -1.95 1.5 0 0 0 1 waypoint_0 throttle_off_point" />
+
 
     </group>
 

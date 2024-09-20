@@ -165,7 +165,7 @@ private:
 
     geometry_msgs::msg::Point position_;
 
-    const double distance_threshold_ = 0.15;
+    const double distance_threshold_ = 0.25;
     const uint filter_rest_threshold_ = 5;
     uint ignore_count_;
     geometry_msgs::msg::Point current_position_;

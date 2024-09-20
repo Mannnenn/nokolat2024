@@ -121,7 +121,7 @@ add_executable(pub_ui_command src/pub_ui_command.cpp)
 ament_target_dependencies(pub_ui_command rclcpp std_msgs geometry_msgs tf2_ros nokolat2024_msg tf2_geometry_msgs)
 
 add_executable(pub_vel src/pub_vel.cpp)
-ament_target_dependencies(pub_vel rclcpp geometry_msgs tf2 tf2_ros tf2_geometry_msgs)
+ament_target_dependencies(pub_vel rclcpp geometry_msgs tf2 tf2_ros tf2_geometry_msgs geometry_msgs)
 
 add_executable(pub_vel_link src/pub_vel_link.cpp)
 ament_target_dependencies(pub_vel_link rclcpp geometry_msgs tf2 tf2_ros tf2_geometry_msgs)
