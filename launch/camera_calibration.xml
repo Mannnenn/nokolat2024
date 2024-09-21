@@ -8,7 +8,7 @@
     <node pkg="camera_calibration" exec="cameracalibrator" output="screen">
         <param name="approximate" value="0.1" />
         <param name="size" value="8x6" />
-        <param name="square" value="0.049" />
+        <param name="square" value="0.082" />
         <remap from="right" to="/infra_cam/left/infra1/synced_image_topic" />
         <remap from="left" to="/infra_cam/right/infra2/synced_image_topic" />
         <remap from="right_camera" to="/my_stereo/right" />

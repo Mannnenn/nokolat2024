@@ -266,7 +266,7 @@ private:
     void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
     {
         auto_landing_target.induction_altitude_target = msg->linear.z;
-        auto_landing_target.induction_pitch_diff = msg->angular.y;
+        auto_landing_target.induction_pitch_diff = -msg->angular.y;
         auto_landing_target.induction_yaw_diff = msg->angular.z;
     }
 
@@ -692,8 +692,14 @@ private:
 
             elevator = elevator_control(auto_landing_target.induction_altitude_target, auto_landing_gain.pitch_gain, auto_landing_target.induction_pitch_diff, auto_landing_gain.nose_up_pitch_gain, auto_landing_gain.elevator_gain);
 
+            altitude_error = pose_received_.z - auto_landing_target.induction_altitude_target;
+            target_pitch = cutoff_min_max(auto_landing_gain.pitch_gain * altitude_error + auto_landing_target.induction_pitch_diff, -M_PI / 6, M_PI / 6);
+            pitch_error = pose_received_.pitch - auto_landing_target.induction_pitch_diff;
+
             aileron_l = aileron_control_l(0, auto_landing_gain.aileron_gain);
             aileron_r = aileron_control_r(0, auto_landing_gain.aileron_gain);
+
+            roll_error = pose_received_.roll - auto_landing_target.roll_target;
 
             rudder = neutral_position_.rudder + auto_landing_gain.rudder_gain * auto_landing_target.induction_yaw_diff;
         }

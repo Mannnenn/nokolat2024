@@ -51,7 +51,7 @@ control_info_config:
         p: 0.23
       nose_up_pitch: 1.1
     target:
-      roll: -0.35
+      roll: -0.32
       rudder: -200
       pitch: -0.2
       upper_altitude: 4.0
@@ -95,13 +95,13 @@ control_info_config:
       aileron:
         p: 650
       rudder:
-        p: 1000
+        p: 200
       pitch:
         p: 0.23
       nose_up_pitch: 1.2
     target:
-      throttle: 900
-      takeoff_throttle: 1100
+      throttle: 1100
+      takeoff_throttle: 900
       roll: 0
       pitch: -0.2
     delay:
