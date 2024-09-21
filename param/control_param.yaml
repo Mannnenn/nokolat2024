@@ -95,7 +95,7 @@ control_info_config:
       aileron:
         p: 650
       rudder:
-        p: 200
+        p: 500
       pitch:
         p: 0.23
       nose_up_pitch: 1.2

@@ -8,9 +8,9 @@ public:
     IMUCalibNode() : Node("imu_calib_node")
     {
         rclcpp::QoS qos(rclcpp::QoSInitialization::from_rmw(rmw_qos_profile_sensor_data));
-        qos.reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);
+        qos.reliability(RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT);
         imu_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
-            "/camera/camera/accel/sample", 10, std::bind(&IMUCalibNode::imuCallback, this, std::placeholders::_1));
+            "/camera/camera/accel/sample", qos, std::bind(&IMUCalibNode::imuCallback, this, std::placeholders::_1));
     }
 
 private:
