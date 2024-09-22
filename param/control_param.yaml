@@ -105,6 +105,6 @@ control_info_config:
       roll: 0
       pitch: -0.2
     delay:
-      accel: 0.5
-      decel: 1
+      accel: 1
+      decel: 2
       land: 2
