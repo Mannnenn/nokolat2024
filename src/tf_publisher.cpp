@@ -53,7 +53,7 @@ public:
 
         // で初期化してカメラの位置推定がなくても動作するようにする
         position_vector_.setX(37);
-        position_vector_.setY(-1);
+        position_vector_.setY(-2);
     }
 
 private:
