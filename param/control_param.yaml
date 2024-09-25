@@ -72,12 +72,12 @@ control_info_config:
       aileron:
         p: 650
       pitch:
-        p: 0.25
-      nose_up_pitch: 1.2
+        p: 0.23
+      nose_up_pitch: 1.1
     target:
       roll:
-        r: 0.33
-        l: -0.35
+        r: 0.32
+        l: -0.32
       rudder:
         r: 200
         l: -200
@@ -95,7 +95,7 @@ control_info_config:
       aileron:
         p: 650
       rudder:
-        p: 500
+        p: 100
       pitch:
         p: 0.23
       nose_up_pitch: 1.2

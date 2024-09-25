@@ -176,6 +176,7 @@ public:
         auto_landing_target.throttle_target = control_info_config_["auto_landing"]["target"]["throttle"].as<double>();
         auto_landing_target.takeoff_throttle_target = control_info_config_["auto_landing"]["target"]["takeoff_throttle"].as<double>();
         auto_landing_target.roll_target = control_info_config_["auto_landing"]["target"]["roll"].as<double>();
+        auto_landing_target.pitch_target = control_info_config_["auto_landing"]["target"]["pitch"].as<double>();
 
         RCLCPP_INFO(this->get_logger(), "get target parameter");
 
@@ -682,7 +683,7 @@ private:
             aileron_r = neutral_position_.aileron_r;
 
             // ラダーはyawの誤差に比例
-            rudder = neutral_position_.rudder + auto_landing_gain.rudder_gain * auto_landing_target.induction_yaw_diff;
+            rudder = neutral_position_.rudder;
         }
         // 離陸~
         else
@@ -690,11 +691,11 @@ private:
             // スロットルはじょじょに下げる
             throttle = auto_landing_target.throttle_target + (auto_landing_target.takeoff_throttle_target - auto_landing_target.throttle_target) * linearDecrease(diff.seconds(), auto_landing_delay.delay_decel);
 
-            elevator = elevator_control(auto_landing_target.induction_altitude_target, auto_landing_gain.pitch_gain, auto_landing_target.induction_pitch_diff, auto_landing_gain.nose_up_pitch_gain, auto_landing_gain.elevator_gain);
+            elevator = elevator_control(auto_landing_target.induction_altitude_target, auto_landing_gain.pitch_gain, auto_landing_target.pitch_target, auto_landing_gain.nose_up_pitch_gain, auto_landing_gain.elevator_gain);
 
             altitude_error = pose_received_.z - auto_landing_target.induction_altitude_target;
-            target_pitch = cutoff_min_max(auto_landing_gain.pitch_gain * altitude_error + auto_landing_target.induction_pitch_diff, -M_PI / 6, M_PI / 6);
-            pitch_error = pose_received_.pitch - auto_landing_target.induction_pitch_diff;
+            target_pitch = cutoff_min_max(auto_landing_gain.pitch_gain * altitude_error + auto_landing_target.pitch_target, -M_PI / 8, M_PI / 6);
+            pitch_error = pose_received_.pitch - auto_landing_target.pitch_target;
 
             aileron_l = aileron_control_l(0, auto_landing_gain.aileron_gain);
             aileron_r = aileron_control_r(0, auto_landing_gain.aileron_gain);
