@@ -129,8 +129,8 @@ namespace nokolat2024
         struct ControlInfo_target_land : public ControlInfo_target
         {
             double induction_altitude_target;
-            double induction_yaw_target;
-            double induction_pitch_target;
+            double induction_yaw_diff;
+            double induction_pitch_diff;
             double takeoff_throttle_target;
         };
 
@@ -158,6 +158,7 @@ namespace nokolat2024
             double delay_accel;
             double delay_decel;
             double delay_rise;
+            double delay_land;
         };
     } // namespace main_control
 } // namespace nokolat2024

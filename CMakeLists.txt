@@ -141,6 +141,9 @@ ament_target_dependencies(pub_timing rclcpp tf2 tf2_ros std_msgs geometry_msgs)
 add_executable(pub_area src/pub_area.cpp)
 ament_target_dependencies(pub_area rclcpp geometry_msgs)
 
+add_executable(camera_imu_calib src/camera_imu_calib.cpp)
+ament_target_dependencies(camera_imu_calib rclcpp sensor_msgs)
+
 install(TARGETS
   tf_publisher
   image_diff_extraction
@@ -168,6 +171,7 @@ install(TARGETS
   path_test
   pub_timing
   pub_area
+  camera_imu_calib
   DESTINATION lib/${PROJECT_NAME})
 
 

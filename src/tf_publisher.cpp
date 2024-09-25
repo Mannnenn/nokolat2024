@@ -51,7 +51,9 @@ public:
         static_tf_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
         tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
 
-        // 0,0で初期化してカメラの位置推定がなくても動作するようにする
+        // で初期化してカメラの位置推定がなくても動作するようにする
+        position_vector_.setX(37);
+        position_vector_.setY(-2);
     }
 
 private:

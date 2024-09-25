@@ -197,6 +197,10 @@
             <param name="input_neutral_position_topic_name" value="$(var neutral_position)" />
             <param name="input_rotation_counter_topic_name" value="$(var rotation_counter)" />
 
+            <param name="input_cmd_vel_topic_name" value="$(var target_vel)" />
+            <param name="input_drop_timing_topic_name" value="$(var drop_timing)" />
+            <param name="input_throttle_off_timing_topic_name" value="$(var throttle_off_timing)" />
+
             <param name="output_command_topic_name" value="$(var send_command_explicit)" />
             <param name="output_counter_reset_topic_name"
                 value="$(var counter_reset)" />
@@ -214,7 +218,7 @@
         </node>
 
         <node pkg="tf2_ros" exec="static_transform_publisher" name="map_to_camera"
-            output="screen" args="0 0 1 0 0.2164396 0 -0.976296 map camera_link" />
+            output="screen" args="0 0 1 0 0.1494381 0 -0.9887711 map camera_link" />
 
         <node pkg="tf2_ros" exec="static_transform_publisher" name="base_link_to_imu_link"
             output="screen" args="0.065 0 0 0 0 0 1 base_link imu_link" />

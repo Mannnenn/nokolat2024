@@ -174,9 +174,9 @@ public:
         eight_turning_target.pitch_target_recover = control_info_config_["eight_turning"]["target"]["pitch"]["recover"].as<double>();
 
         auto_landing_target.throttle_target = control_info_config_["auto_landing"]["target"]["throttle"].as<double>();
+        auto_landing_target.takeoff_throttle_target = control_info_config_["auto_landing"]["target"]["takeoff_throttle"].as<double>();
         auto_landing_target.roll_target = control_info_config_["auto_landing"]["target"]["roll"].as<double>();
-        auto_landing_target.rudder_target = control_info_config_["auto_landing"]["target"]["yaw"].as<double>();
-        auto_landing_target.altitude_target = control_info_config_["auto_landing"]["target"]["altitude"].as<double>();
+        auto_landing_target.pitch_target = control_info_config_["auto_landing"]["target"]["pitch"].as<double>();
 
         RCLCPP_INFO(this->get_logger(), "get target parameter");
 
@@ -190,6 +190,8 @@ public:
         eight_turning_delay.delay_rudder = control_info_config_["eight_turning"]["delay"]["rudder"].as<double>();
 
         auto_landing_delay.delay_accel = control_info_config_["auto_landing"]["delay"]["accel"].as<double>();
+        auto_landing_delay.delay_decel = control_info_config_["auto_landing"]["delay"]["decel"].as<double>();
+        auto_landing_delay.delay_land = control_info_config_["auto_landing"]["delay"]["land"].as<double>();
 
         RCLCPP_INFO(this->get_logger(), "get delay window parameter");
 
@@ -265,8 +267,8 @@ private:
     void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
     {
         auto_landing_target.induction_altitude_target = msg->linear.z;
-        auto_landing_target.induction_pitch_target = msg->angular.y;
-        auto_landing_target.induction_yaw_target = msg->angular.z;
+        auto_landing_target.induction_pitch_diff = -msg->angular.y;
+        auto_landing_target.induction_yaw_diff = msg->angular.z;
     }
 
     void drop_timing_callback(const std_msgs::msg::String::SharedPtr msg)
@@ -275,6 +277,10 @@ private:
         {
             drop_timing = true;
         }
+        else
+        {
+            drop_timing = false;
+        }
     }
 
     void throttle_off_timing_callback(const std_msgs::msg::String::SharedPtr msg)
@@ -282,6 +288,10 @@ private:
         if (msg->data == "throttle_off")
         {
             throttle_off_timing = true;
+        }
+        else
+        {
+            throttle_off_timing = false;
         }
     }
 
@@ -383,6 +393,7 @@ private:
                 // 自動離着陸用のタイミングもリセット
                 drop_timing = false;
                 throttle_off_timing = false;
+                daccel_start = false;
 
                 mode_init = false;
                 start_mode_time_ = ros_clock->now(); // 開始の時間を取得
@@ -661,15 +672,10 @@ private:
         rclcpp::Time current_time = ros_clock->now();
         rclcpp::Duration diff = current_time - start_mode_time_;
 
-        double start = 2;
-        double offset = 3;
-        double down = 5;
-        double end = 7;
-
-        // 滑走
-        if (diff.seconds() < start)
+        // 加速
+        if (diff.seconds() < auto_landing_delay.delay_accel)
         {
-            throttle = auto_landing_target.throttle_target;
+            throttle = auto_landing_target.takeoff_throttle_target;
 
             elevator = neutral_position_.elevator;
 
@@ -677,107 +683,54 @@ private:
             aileron_r = neutral_position_.aileron_r;
 
             // ラダーはyawの誤差に比例
-            yaw_error = pose_received_.yaw - auto_landing_target.rudder_target;
-            rudder = neutral_position_.rudder + auto_landing_gain.rudder_gain * yaw_error;
-
-            drop = config.drop_min;
+            rudder = neutral_position_.rudder;
         }
-        // 上昇
-        if (diff.seconds() >= start && diff.seconds() < offset)
+        // 離陸~
+        else
         {
-            // 制御値を計算
+            // スロットルはじょじょに下げる
+            throttle = auto_landing_target.throttle_target + (auto_landing_target.takeoff_throttle_target - auto_landing_target.throttle_target) * linearDecrease(diff.seconds(), auto_landing_delay.delay_decel);
 
-            // スロットルはそのままを維持するように
-            throttle = auto_landing_target.throttle_target;
+            elevator = elevator_control(auto_landing_target.induction_altitude_target, auto_landing_gain.pitch_gain, auto_landing_target.pitch_target, auto_landing_gain.nose_up_pitch_gain, auto_landing_gain.elevator_gain);
 
-            // 標高の誤差を計算
-            altitude_error = pose_received_.z - auto_landing_target.altitude_target;
-            // 標高の誤差にピッチを比例
+            altitude_error = pose_received_.z - auto_landing_target.induction_altitude_target;
             target_pitch = cutoff_min_max(auto_landing_gain.pitch_gain * altitude_error + auto_landing_target.pitch_target, -M_PI / 8, M_PI / 6);
+            pitch_error = pose_received_.pitch - auto_landing_target.pitch_target;
 
-            // ピッチの誤差を計算
-            pitch_error = pose_received_.pitch - target_pitch;
+            aileron_l = aileron_control_l(0, auto_landing_gain.aileron_gain);
+            aileron_r = aileron_control_r(0, auto_landing_gain.aileron_gain);
 
-            // ピッチの誤差にエレベーターを比例、機首上げがよくなるように係数を変更
-            if (target_pitch >= 0) // 機首下げ
-            {
-                elevator = neutral_position_.elevator + auto_landing_gain.elevator_gain * pitch_error;
-            }
-            if (target_pitch < 0) // 機首上げ
-            {
-                elevator = neutral_position_.elevator + auto_landing_gain.nose_up_pitch_gain * auto_landing_gain.elevator_gain * pitch_error;
-            }
+            roll_error = pose_received_.roll - auto_landing_target.roll_target;
 
-            // ロールの誤差を計算,水平維持
-            roll_error = pose_received_.roll - auto_turning_target.roll_target;
-
-            // ロールの誤差にエルロンを比例
-            aileron_l = neutral_position_.aileron_l + auto_landing_gain.aileron_gain * roll_error;
-            aileron_r = neutral_position_.aileron_r + auto_landing_gain.aileron_gain * roll_error;
-
-            // ラダーはyawの誤差に比例
-            yaw_error = pose_received_.yaw - auto_landing_target.rudder_target;
-            rudder = neutral_position_.rudder + auto_landing_gain.rudder_gain * yaw_error;
-
-            if (diff.seconds() > 5)
-            {
-                // 一定時間後にドロップを投下
-                drop = config.drop_center;
-            }
-            else
-            {
-                drop = config.drop_min;
-            }
+            rudder = neutral_position_.rudder + auto_landing_gain.rudder_gain * auto_landing_target.induction_yaw_diff;
         }
-        // 着陸
-        if (diff.seconds() >= down)
+
+        if (drop_timing)
         {
-            // 制御値を計算
+            drop = drop_control(config.drop_max);
+        }
+        else
+        {
+            drop = drop_control(config.drop_min);
+        }
 
-            // スロットルはそのままを維持するように
-            if (diff.seconds() < end)
+        if (throttle_off_timing)
+        {
+            // スロットルを徐々に下げる
+            if (daccel_start == false)
             {
-                throttle = 800;
-            }
-            else
-            {
-                throttle = config.throttle_min;
-            }
-
-            // 標高の誤差を計算
-            altitude_error = pose_received_.z - 0; // 地面に着陸
-            // 標高の誤差にピッチを比例
-            target_pitch = cutoff_min_max(auto_landing_gain.pitch_gain * altitude_error + auto_landing_target.pitch_target, -M_PI / 10, M_PI / 10);
-
-            // ピッチの誤差を計算
-            pitch_error = pose_received_.pitch - target_pitch;
-
-            // ピッチの誤差にエレベーターを比例、機首上げがよくなるように係数を変更
-            if (target_pitch >= 0) // 機首下げ
-            {
-                elevator = neutral_position_.elevator - auto_landing_gain.elevator_gain * pitch_error;
-            }
-            if (target_pitch < 0) // 機首上げ
-            {
-                elevator = neutral_position_.elevator - auto_landing_gain.nose_up_pitch_gain * auto_landing_gain.elevator_gain * pitch_error;
+                daccel_start_time_ = ros_clock->now();
+                daccel_start = true;
             }
 
-            // ロールの誤差を計算,水平維持
-            roll_error = pose_received_.roll - auto_turning_target.roll_target;
+            rclcpp::Duration diff = current_time - daccel_start_time_;
 
-            // ロールの誤差にエルロンを比例
-            aileron_l = neutral_position_.aileron_l + auto_landing_gain.aileron_gain * roll_error;
-            aileron_r = neutral_position_.aileron_r + auto_landing_gain.aileron_gain * roll_error;
-
-            // ラダーはyawの誤差に比例
-            yaw_error = pose_received_.yaw - auto_landing_target.rudder_target;
-            rudder = neutral_position_.rudder + auto_landing_gain.rudder_gain * yaw_error;
-
-            drop = config.drop_center;
+            throttle = config.throttle_min + (auto_landing_target.takeoff_throttle_target - config.throttle_min) * linearDecrease(diff.seconds(), auto_landing_delay.delay_land);
         }
     }
 
-    void pub_command_data()
+    void
+    pub_command_data()
     {
         // 制御値を送信
         nokolat2024_msg::msg::Command command;
@@ -936,6 +889,8 @@ private:
 
     bool drop_timing = false;
     bool throttle_off_timing = false;
+    bool daccel_start = false;
+    rclcpp::Time daccel_start_time_;
 
     nokolat2024::main_control::RISE_TURNING_MODE rise_turning_mode;
     nokolat2024::main_control::EIGHT_TURNING_MODE eight_turning_mode;
