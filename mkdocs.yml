@@ -25,8 +25,6 @@ theme:
     - navigation.tabs
     - navigation.tabs.sticky
 
-  custom_dir: overrides
-
 plugins:
   search:
     lang: 'ja'
@@ -38,19 +36,6 @@ extra:
       name: Ramajan_ on Twitter
     - icon: fontawesome/brands/github
       link: https://github.com/Mannnenn/nokolat2024
-  comments: true
 
 repo_url: https://github.com/Mannnenn/nokolat2024
 repo_name: Mannnenn/nokolat2024
-
-markdown_extensions:
-  - admonition
-  - codehilite
-  - toc:
-      permalink: true
-
-extra_javascript:
-  - https://giscus.app/client.js
-
-extra_css:
-  - stylesheets/extra.css
