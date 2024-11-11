@@ -39,3 +39,33 @@ extra:
 
 repo_url: https://github.com/Mannnenn/nokolat2024
 repo_name: Mannnenn/nokolat2024
+
+extra_javascript:
+  - js/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+  - pymdownx.highlight:
+      use_pygments: true
+      noclasses: true
+      pygments_style: monokai
+      linenums: true
+
+markdown_extensions:
+  - pymdownx.arithmatex:
+      generic: true
+
+nav:
+  - イントロ:
+      - 競技紹介: '1-1競技紹介.md'
+  - 飛行機操作の気持ち:
+      - 飛行機の特徴: '2-1飛行機の特徴.md'
+      - 飛行機の操作: '2-2飛行機の操作.md'
+      - 機体設計による制御性の変化: '2-3機体設計による制御性の変化.md'
+  - 仕様決め:
+      - 仕様決め: '3-1仕様決め.md'
+      - 処理の流れ: '3-2処理の流れ.md'
+      - 各ノードの機能: '3-3各ノードの機能.md'
+      - 各launchファイルの機能: '3-4各launchファイルの機能.md'
+  - アルゴリズムの概要:
+      - 画像処理: '4-1画像処理.md'
+      - 制御: '4-2制御.md'
