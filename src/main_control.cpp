@@ -317,6 +317,7 @@ private:
         }
 
         main_control();
+        pub_ui_data();
     }
 
     void main_control()
@@ -328,6 +329,8 @@ private:
 
             // 旋回カウンタもリセット
             reset_rotation_count(1);
+            // マニュアルモードのときはトピックを送信しない
+            return;
         }
 
         if (control_mode_ == nokolat2024::main_control::control_mode_map.at(nokolat2024::main_control::CONTROL_MODE::AUTO_TURNING))
@@ -402,7 +405,6 @@ private:
         }
 
         pub_command_data();
-        pub_ui_data();
     }
 
     double throttle_control(double throttle_target)
